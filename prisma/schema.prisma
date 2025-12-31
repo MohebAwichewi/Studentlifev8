@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 1. STUDENTS
+model Student {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
+// 2. BUSINESSES (Updated for BP-03, BP-07, BP-10, BP-16)
+model Business {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  password     String
+  
+  // ✅ FIXED: Renamed 'name' to 'businessName' to match your TypeScript code
+  businessName String   
+  
+  description  String?
+  category     String   @default("Food")
+  status       String   @default("PENDING") // For ADM-01
+   
+  // ✅ Subscriptions & Billing (BP-07, BP-10)
+  plan         String   @default("FREE") // FREE, PRO, ENTERPRISE
+  trialEnds    DateTime? // For 3-month trial tracking
+   
+  // ✅ Relations
+  deals        Deal[]
+  pushRequests PushRequest[]
+  locations    Location[]    // ✅ BP-03: Multiple physical branches
+  tickets      Ticket[]      // ✅ BP-16: Support portal access
+   
+  createdAt    DateTime @default(now())
+}
+
+// 3. DEALS (Updated for BP-04, BP-05)
+model Deal {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  category    String
+  expiry      String   // ✅ BP-05: Validity periods
+  image       String?
+  businessId  Int
+  business    Business @relation(fields: [businessId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+// 4. PUSH REQUESTS (Updated for NOT-01, NOT-03)
+model PushRequest {
+  id           Int      @id @default(autoincrement())
+  title        String
+  message      String
+  status       String   @default("PENDING") 
+   
+  // ✅ NOT-01: Radius-based targeting
+  targetRadius Int      @default(0) 
+
+  businessId   Int
+  business     Business @relation(fields: [businessId], references: [id])
+   
+  createdAt    DateTime @default(now())
+   
+  // ✅ NOT-03: History Logging
+  sentAt       DateTime? 
+}
+
+// 5. LOCATIONS (✅ BP-03: Physical branch management)
+model Location {
+  id         Int      @id @default(autoincrement())
+  name       String   // e.g., "Ennasr Branch"
+  address    String
+  lat        Float
+  lng        Float
+  businessId Int
+  business   Business @relation(fields: [businessId], references: [id])
+}
+
+// 6. SUPPORT TICKETS (✅ BP-16: Contact support portal)
+model Ticket {
+  id         Int      @id @default(autoincrement())
+  subject    String
+  message    String
+  status     String   @default("OPEN") // OPEN, CLOSED
+  createdAt  DateTime @default(now())
+  businessId Int
+  business   Business @relation(fields: [businessId], references: [id])
+}
+
+// 7. UNIVERSITIES (ADM-04)
+model University {
+  id        Int      @id @default(autoincrement())
+  name      String
+  region    String   @default("Tunis") 
+  latitude  Float
+  longitude Float
+  createdAt DateTime @default(now())
+}
+
+// 8. ADMIN
+model Admin {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  role      String   @default("SUPER_ADMIN")
+  createdAt DateTime @default(now())
+}
+
+// 9. OTP CODES
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
