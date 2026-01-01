@@ -1,5 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // This tells Prisma: "Build for my Windows PC AND for the cPanel Linux server"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -7,13 +9,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ... Keep your models (Student, Deal, etc.) below this line ...
+
 // 1. STUDENTS
 model Student {
   id        Int      @id @default(autoincrement())
   email     String   @unique
+  fullName  String?  // <--- ADD THIS LINE
   createdAt DateTime @default(now())
 }
-
 // 2. BUSINESSES (Updated for BP-03, BP-07, BP-10, BP-16)
 model Business {
   id           Int      @id @default(autoincrement())

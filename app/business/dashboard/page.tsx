@@ -4,10 +4,9 @@ import React, { useState } from 'react'
 
 /**
  * Business Dashboard Component
- * This is the primary interface for Startup Partners to manage deals.
+ * Clean version: No POS, No Scanner. Focused on Marketing.
  */
 export default function BusinessDashboardPage() {
-  // --- STATE MANAGEMENT ---
   const [isLoading, setIsLoading] = useState(false)
   const [newOffer, setNewOffer] = useState({
     title: '',
@@ -22,21 +21,19 @@ export default function BusinessDashboardPage() {
     setIsLoading(true)
 
     try {
-      // SEND REAL DATA TO DATABASE
       const res = await fetch('/api/offers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: newOffer.title,        // e.g. "Lunch Special"
-          description: newOffer.desc,   // e.g. "Free drink with meal"
-          discount: newOffer.discount,  // e.g. "15%"
-          validUntil: newOffer.date     // e.g. "2025-12-31"
+          title: newOffer.title,
+          description: newOffer.desc,
+          discount: newOffer.discount,
+          validUntil: newOffer.date
         })
       })
 
       if (res.ok) {
         alert("Offer is live on the Student App!")
-        // Reset the form after success
         setNewOffer({ title: '', desc: '', discount: '', date: '' })
       } else {
         alert("Failed to publish offer.")
@@ -50,7 +47,7 @@ export default function BusinessDashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-['Inter']">
-      {/* Top Navigation */}
+      {/* --- TOP NAVIGATION --- */}
       <nav className="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-10">
         <div className="flex items-center gap-2">
           <span className="text-xl font-bold">Student<span className="text-orange-500">.LIFE</span></span>
@@ -68,11 +65,11 @@ export default function BusinessDashboardPage() {
           <p className="text-slate-500">Professional Control Center for Student.LIFE Partners.</p>
         </header>
 
-        {/* --- KPI STATS --- */}
+        {/* --- KPI STATS (Clean 3-Column Grid) --- */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Active Offers</p>
-            <h3 className="text-2xl font-bold text-slate-900">0</h3>
+            <h3 className="text-2xl font-bold text-slate-900">1</h3>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Engagement</p>
@@ -86,7 +83,7 @@ export default function BusinessDashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           
-          {/* --- CREATE DEAL (ADM-01 FLOW) --- */}
+          {/* --- CREATE DEAL --- */}
           <section className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
             <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
               <i className="fa-solid fa-tag text-orange-500"></i> New Student Offer
@@ -155,7 +152,7 @@ export default function BusinessDashboardPage() {
             </form>
           </section>
 
-          {/* --- PUSH NOTIFICATION (ADM-03 / NOT-01 FLOW) --- */}
+          {/* --- PUSH NOTIFICATION --- */}
           <section className="bg-slate-900 p-8 rounded-3xl shadow-xl text-white">
             <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
               <i className="fa-solid fa-bolt text-indigo-400"></i> Flash Push Notification
