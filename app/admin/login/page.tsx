@@ -1,105 +1,115 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { signIn } from 'next-auth/react' // Assuming you are using NextAuth
+import Link from 'next/link'
 
-export default function AdminLogin() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+export default function StudentLogin() {
+  const router = useRouter()
+  const [form, setForm] = useState({ email: '', password: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
     setLoading(true)
 
     try {
-      // Attempt to sign in using the credentials provider
-      const result = await signIn('credentials', {
-        redirect: false,
-        email,
-        password,
-        callbackUrl: '/admin/dashboard'
+      // ⚠️ THE FIX: Ensure this points to LOGIN, not register
+      const res = await fetch('/api/login', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form)
       })
 
-      if (result?.error) {
-        // Show actual database error (e.g., "Incorrect password")
-        setError(result.error)
-        setLoading(false)
+      const data = await res.json()
+
+      if (res.ok) {
+        // Success: Save user data/token if needed
+        // localStorage.setItem('studentUser', JSON.stringify(data.user)) 
+        
+        // Redirect to Student Dashboard
+        router.push('/student/dashboard') 
       } else {
-        // Success: Redirect to the dashboard
-        router.push('/admin/dashboard')
+        setError(data.error || 'Invalid credentials')
       }
     } catch (err) {
-      setError('An unexpected error occurred.')
+      setError('Something went wrong. Please try again.')
+    } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8F9FC] font-sans">
-      <div className="bg-white p-10 rounded-[2rem] shadow-xl w-full max-w-md border border-slate-100">
-        
-        {/* Header */}
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">
-            Student<span className="text-red-500">.LIFE</span>
-          </h1>
-          <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">CEO Control Center</p>
+    <div className="min-h-screen flex">
+      {/* Left Side - Brand */}
+      <div className="hidden lg:flex w-1/2 bg-[#4F46E5] text-white p-12 flex-col justify-between relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="bg-white/20 w-fit px-3 py-1 rounded-full text-xs font-bold mb-6">v2.0 LIVE</div>
+          <h1 className="text-4xl font-black mb-4">Student.LIFE</h1>
+          <p className="text-indigo-200 text-lg">Unlock exclusive student perks.</p>
         </div>
+        <div className="relative z-10">
+          <p className="font-medium text-indigo-200">Join thousands of Tunisian students saving money every day.</p>
+        </div>
+      </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
-            <input 
-              type="email" 
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-900"
-              placeholder="admin@s7.agency"
-            />
-          </div>
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 bg-white flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome back</h2>
+          <p className="text-slate-500 mb-8">Please enter your details to sign in.</p>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label>
-            <input 
-              type="password" 
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-900"
-              placeholder="••••••"
-            />
-          </div>
-
-          {/* Error Message Display */}
-          {error && (
-            <div className="p-4 bg-red-50 text-red-500 text-xs font-bold rounded-xl flex items-center gap-2">
-              <i className="fa-solid fa-circle-exclamation"></i>
-              {error}
-            </div>
-          )}
-
-          {/* Submit Button */}
-          <button 
-            type="submit" 
-            disabled={loading}
-            className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-black transition-all shadow-lg hover:shadow-xl disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center"
-          >
-            {loading ? (
-              <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
-            ) : (
-              "Secure Login"
+          <form onSubmit={handleLogin} className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 text-red-500 text-sm font-bold rounded-xl flex items-center gap-2">
+                <i className="fa-solid fa-circle-exclamation"></i> {error}
+              </div>
             )}
-          </button>
 
-        </form>
+            <div>
+              <label className="text-xs font-bold text-slate-500 uppercase ml-1 mb-1 block">Email Address</label>
+              <input 
+                type="email" 
+                required
+                className="w-full p-4 bg-slate-50 rounded-xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 transition" 
+                placeholder="student@university.tn" 
+                onChange={e => setForm({...form, email: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <div className="flex justify-between items-center ml-1 mb-1">
+                <label className="text-xs font-bold text-slate-500 uppercase block">Password</label>
+                <a href="#" className="text-xs font-bold text-indigo-600 hover:text-indigo-800">Forgot password?</a>
+              </div>
+              <input 
+                type="password" 
+                required
+                className="w-full p-4 bg-slate-50 rounded-xl font-bold text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500 transition" 
+                placeholder="••••••••" 
+                onChange={e => setForm({...form, password: e.target.value})}
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="w-full bg-[#4F46E5] text-white py-4 rounded-xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                   <i className="fa-solid fa-circle-notch fa-spin"></i> Signing in...
+                </>
+              ) : 'Sign In'}
+            </button>
+          </form>
+
+          <p className="text-center mt-8 text-sm text-slate-500">
+            Don't have an account? <Link href="/register" className="font-bold text-indigo-600 hover:underline">Register for free</Link>
+          </p>
+        </div>
       </div>
     </div>
   )

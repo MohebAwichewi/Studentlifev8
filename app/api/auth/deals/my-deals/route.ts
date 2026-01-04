@@ -1,32 +1,43 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { PrismaClient } from '@prisma/client'
 
+const prisma = new PrismaClient()
+
+export async function GET(req: Request) {
+  try {
+    // In a real app, get ID from Session/Cookie. 
+    // For MVP, we'll assume we pass email via header or grab the first matching business for simplicity 
+    // OR (Better for MVP) rely on the frontend sending the email in a custom header.
+    // Let's assume the frontend sends 'x-business-email' header for now (we'll update frontend to match).
+    
+    // HOWEVER, since we can't easily change headers in standard fetch without logic, 
+    // let's stick to the POST method for security/simplicity in MVP like we did for stats.
+    
+    // actually, let's switch this to POST so we can pass the email in the body securely.
+    return NextResponse.json({ error: "Use POST to fetch sensitive data" }, { status: 405 })
+    
+  } catch (error) {
+    return NextResponse.json({ error: "Server Error" }, { status: 500 })
+  }
+}
+
+// ✅ REAL IMPLEMENTATION
 export async function POST(req: Request) {
   try {
     const { email } = await req.json()
+    if (!email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    if (!email) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
-    }
-
-    // 1. Find the Business ID
     const business = await prisma.business.findUnique({
-      where: { email }
+      where: { email },
+      include: { 
+        deals: { orderBy: { createdAt: 'desc' } } 
+      }
     })
 
-    if (!business) {
-      return NextResponse.json({ error: 'Business not found' }, { status: 404 })
-    }
+    if (!business) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
-    // 2. Find ALL deals belonging to this business
-    const deals = await prisma.deal.findMany({
-      where: { businessId: business.id },
-      orderBy: { createdAt: 'desc' }
-    })
-
-    return NextResponse.json({ success: true, deals })
-
+    return NextResponse.json({ deals: business.deals })
   } catch (error) {
-    return NextResponse.json({ error: 'Server Error' }, { status: 500 })
+    return NextResponse.json({ error: "Failed to fetch deals" }, { status: 500 })
   }
 }

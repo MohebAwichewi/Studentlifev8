@@ -2,15 +2,17 @@
   "name": "student-life",
   "version": "0.1.0",
   "private": true,
-"scripts": {
-  "dev": "next dev",
- "build": "next build", 
-  "start": "node server.js",
-  "lint": "next lint"
-},
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "node server.js",
+    "lint": "next lint"
+  },
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "@react-google-maps/api": "^2.20.8",
+    "@stripe/react-stripe-js": "^5.4.1",
+    "@stripe/stripe-js": "^8.6.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^2.4.3",
     "framer-motion": "^12.23.26",
@@ -21,7 +23,9 @@
     "nodemailer": "^7.0.12",
     "qrcode.react": "^4.2.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "react-qr-code": "^2.0.18",
+    "stripe": "^20.1.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

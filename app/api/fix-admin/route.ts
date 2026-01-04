@@ -1,39 +1,28 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import bcrypt from 'bcrypt'
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
+
+const prisma = new PrismaClient()
 
 export async function GET() {
   try {
-    const email = "admin@s7.tn"
-    const password = "admin" // Keeping it simple for the fix
+    // 1. Generate a secure hash for "admin123"
+    const hashedPassword = await bcrypt.hash('admin123', 10)
 
-    // 1. DELETE existing admin (Clear the broken data)
-    await prisma.admin.deleteMany({
-      where: { email: email }
-    })
-
-    // 2. Generate a fresh hash
-    const hashedPassword = await bcrypt.hash(password, 10)
-
-    // 3. Create the new clean Admin
-    const newAdmin = await prisma.admin.create({
-      data: {
-        email,
-        password: hashedPassword, // Storing the hash correctly
-        role: "CEO"
+    // 2. Update the admin user
+    const admin = await prisma.admin.update({
+      where: { email: 'admin@s7.com' },
+      data: { 
+        password: hashedPassword 
       }
     })
 
     return NextResponse.json({ 
       success: true, 
-      message: "✅ FIXED! Old admin deleted. New Admin Created.", 
-      credentials: {
-        email: email,
-        password: password
-      }
+      message: "Password for admin@s7.com has been encrypted to 'admin123'",
+      newHash: hashedPassword
     })
-
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error) {
+    return NextResponse.json({ error: "Failed to update. Does the user 'admin@s7.com' exist?" }, { status: 500 })
   }
 }

@@ -4,8 +4,11 @@ import { cookies } from 'next/headers'
 export async function POST() {
   const cookieStore = await cookies()
   
-  // Delete the security cookie
-  cookieStore.delete('admin_session')
+  // ✅ FIX: Explicitly delete from the root path
+  cookieStore.delete({
+    name: 'admin_session',
+    path: '/'
+  })
   
   return NextResponse.json({ success: true })
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcryptjs' // Changed to 'bcryptjs' to match your environment
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -18,17 +18,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    // 3. Check if password matches the hash
+    // 3. Check if password matches
     const passwordMatch = await bcrypt.compare(password, business.password)
 
     if (!passwordMatch) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
     }
 
-    // 4. (Optional) Check approval status
-    // if (business.status !== 'APPROVED') {
-    //   return NextResponse.json({ error: 'Account pending approval' }, { status: 403 })
-    // }
+    // 4. ✅ SECURITY ENABLED: Check approval status
+    // Now they cannot login unless you click "Approve" in the dashboard
+    if (business.status !== 'APPROVED') {
+       return NextResponse.json({ error: 'Account pending approval. Please wait for admin verification.' }, { status: 403 })
+    }
 
     // 5. Success
     return NextResponse.json({ 
@@ -36,7 +37,6 @@ export async function POST(req: Request) {
       message: 'Login successful',
       business: {
         id: business.id,
-        // ✅ FIXED: Using 'businessName' to match your database schema
         name: business.businessName, 
         email: business.email
       }

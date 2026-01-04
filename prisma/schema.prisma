@@ -1,6 +1,6 @@
+// 1. CONFIGURATION (Handles Windows PC + Linux/cPanel Server)
 generator client {
   provider      = "prisma-client-js"
-  // This tells Prisma: "Build for my Windows PC AND for the cPanel Linux server"
   binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
 }
 
@@ -9,106 +9,194 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ... Keep your models (Student, Deal, etc.) below this line ...
+// ---------------------------------------------------------
+//                          MODELS
+// ---------------------------------------------------------
 
-// 1. STUDENTS
+// 1. STUDENTS (Updated with Auth & Profile Fields)
 model Student {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  fullName  String?  // <--- ADD THIS LINE
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  fullName   String
+  email      String   @unique
+  password   String   // In production, hash this!
+  dob        String
+  university String
+  hometown   String
+  otp        String?  // Stores the temporary code
+  isVerified Boolean  @default(false)
+  
+  // ✅ EXISTING RELATION
+  redemptions Redemption[]
+  
+  // ✅ NEW RELATION: Saved Deals (Favorites)
+  savedDeals  SavedDeal[] 
+
+  createdAt  DateTime @default(now())
 }
-// 2. BUSINESSES (Updated for BP-03, BP-07, BP-10, BP-16)
+
+// 2. BUSINESSES (Main Partner Model - Updated with City & Stripe)
 model Business {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  password     String
+  // ✅ Changed to String CUID as requested
+  id                   String   @id @default(cuid())
   
-  // ✅ FIXED: Renamed 'name' to 'businessName' to match your TypeScript code
-  businessName String   
+  email                String   @unique
+  password             String
   
-  description  String?
-  category     String   @default("Food")
-  status       String   @default("PENDING") // For ADM-01
-   
-  // ✅ Subscriptions & Billing (BP-07, BP-10)
-  plan         String   @default("FREE") // FREE, PRO, ENTERPRISE
-  trialEnds    DateTime? // For 3-month trial tracking
-   
-  // ✅ Relations
+  // Basic Info
+  businessName         String   
+  // ✅ NEW: Exposure Counter (Real Analytics)
+  viewCount            Int      @default(0)
+  // ✅ NEW FIELD ADDED HERE
+  city                 String   @default("Tunis") 
+
+  // ✅ EXISTING FIELDS PRESERVED
+  description          String?  @db.Text 
+  logo                 String?  // URL to image
+  coverImage           String?  // URL to image
+  website              String?
+  category             String   @default("Food")
+  address              String?  // Added this as it's used in your signup form
+  phone                String?  // Added this as it's used in your signup form
+  role                 String?  // Added for 'Owner' role tracking
+
+  // Status (Visible in Admin)
+  status               String   @default("PENDING") 
+  
+  // ✅ NEW: Store rejection reason if status is REJECTED
+  rejectionReason      String?  @db.Text 
+  
+  // Subscriptions & Billing (UPDATED)
+  plan                 String    @default("FREE") 
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?
+  isTrialActive        Boolean   @default(false)
+  trialEnds            DateTime?
+  
+  // Relations
   deals        Deal[]
   pushRequests PushRequest[]
-  locations    Location[]    // ✅ BP-03: Multiple physical branches
-  tickets      Ticket[]      // ✅ BP-16: Support portal access
-   
+  locations    Location[]      
+  tickets      Ticket[]        
+  
+  // ✅ EXISTING RELATION
+  redemptions  Redemption[]
+  
   createdAt    DateTime @default(now())
 }
 
-// 3. DEALS (Updated for BP-04, BP-05)
+// 3. DEALS (Offers created by businesses)
 model Deal {
-  id          Int      @id @default(autoincrement())
-  title       String
-  description String
-  category    String
-  expiry      String   // ✅ BP-05: Validity periods
-  image       String?
-  businessId  Int
-  business    Business @relation(fields: [businessId], references: [id])
-  createdAt   DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  title         String
+  description   String
+  category      String
+  expiry        String   
+  image         String?
+  
+  // ✅ NEW: Status (Default is PENDING, must be approved to go live)
+  status        String   @default("PENDING") 
+  
+  // ✅ NEW: Priority Score (Higher = Shows first)
+  priorityScore Int      @default(0) 
+
+  // ✅ NEW: Store rejection reason if status is REJECTED
+  rejectionReason String?  @db.Text 
+
+  // ✅ Relation updated to String to match Business ID
+  businessId    String
+  business      Business @relation(fields: [businessId], references: [id])
+  
+  // ✅ NEW RELATION: Tracks which students saved this deal
+  savedBy       SavedDeal[] 
+  
+  createdAt     DateTime @default(now())
 }
 
-// 4. PUSH REQUESTS (Updated for NOT-01, NOT-03)
+// 4. PUSH REQUESTS (Notification Campaigns)
 model PushRequest {
   id           Int      @id @default(autoincrement())
   title        String
   message      String
   status       String   @default("PENDING") 
-   
-  // ✅ NOT-01: Radius-based targeting
   targetRadius Int      @default(0) 
 
-  businessId   Int
+  // ✅ Relation updated to String to match Business ID
+  businessId   String
   business     Business @relation(fields: [businessId], references: [id])
-   
+  
   createdAt    DateTime @default(now())
-   
-  // ✅ NOT-03: History Logging
   sentAt       DateTime? 
 }
 
-// 5. LOCATIONS (✅ BP-03: Physical branch management)
+// 5. LOCATIONS (Physical Branches)
 model Location {
   id         Int      @id @default(autoincrement())
-  name       String   // e.g., "Ennasr Branch"
+  name       String   
   address    String
   lat        Float
   lng        Float
-  businessId Int
+  
+  // ✅ Relation updated to String to match Business ID
+  businessId String
   business   Business @relation(fields: [businessId], references: [id])
 }
 
-// 6. SUPPORT TICKETS (✅ BP-16: Contact support portal)
+// 6. SUPPORT TICKETS
 model Ticket {
-  id         Int      @id @default(autoincrement())
-  subject    String
-  message    String
-  status     String   @default("OPEN") // OPEN, CLOSED
-  createdAt  DateTime @default(now())
-  businessId Int
+  id        Int      @id @default(autoincrement())
+  subject   String
+  message   String
+  status    String   @default("OPEN") 
+  createdAt DateTime @default(now())
+  
+  // ✅ Relation updated to String to match Business ID
+  businessId String
   business   Business @relation(fields: [businessId], references: [id])
 }
 
-// 7. UNIVERSITIES (ADM-04)
+// 7. UNIVERSITIES (Updated with Campuses & Notes)
 model University {
   id        Int      @id @default(autoincrement())
   name      String
   region    String   @default("Tunis") 
   latitude  Float
   longitude Float
+  
+  // ✅ Relation to multiple campuses
+  campuses  Campus[]
+  
+  // ✅ Relation to Notes
+  notes     UniversityNote[]
+  
   createdAt DateTime @default(now())
 }
 
-// 8. ADMIN
+// ✅ NEW MODEL: CAMPUS (Updated with Status)
+model Campus {
+  id           Int        @id @default(autoincrement())
+  name         String     // e.g. "Ghazala Campus", "Charguia"
+  address      String?
+  latitude     Float
+  longitude    Float
+  
+  // ✅ NEW: Status Field
+  status       String     @default("ACTIVE") // Values: ACTIVE, CLOSED, MAINTENANCE
+  
+  universityId Int
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+}
+
+// ✅ NEW MODEL: University Notes
+model UniversityNote {
+  id           Int        @id @default(autoincrement())
+  content      String     @db.Text
+  createdAt    DateTime   @default(now())
+  
+  universityId Int
+  university   University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+}
+
+// 8. ADMIN (Dashboard Access)
 model Admin {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -117,11 +205,43 @@ model Admin {
   createdAt DateTime @default(now())
 }
 
-// 9. OTP CODES
+// 9. OTP CODES (Generic Verification Tokens)
 model VerificationToken {
   identifier String
   token      String
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// 10. REDEMPTIONS (Real Tracking of In-Store Usage)
+model Redemption {
+  id         String   @id @default(uuid())
+  
+  // Who used it?
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id])
+  
+  // Where was it used?
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id])
+  
+  // When?
+  redeemedAt DateTime @default(now())
+}
+
+// 11. SAVED DEALS (New Feature - Favorites)
+model SavedDeal {
+  id        String   @id @default(uuid())
+  
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id])
+  
+  dealId    Int
+  deal      Deal     @relation(fields: [dealId], references: [id])
+  
+  savedAt   DateTime @default(now())
+
+  // Prevents a student from saving the same deal more than once
+  @@unique([studentId, dealId]) 
 }

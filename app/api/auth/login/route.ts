@@ -1,24 +1,43 @@
 import { NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
+import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
-export async function POST(request: Request) {
-  const body = await request.json()
-  
-  if (
-    body.username === process.env.ADMIN_USER && 
-    body.password === process.env.ADMIN_PASSWORD
-  ) {
-    // Set cookie
-    const cookieStore = await cookies()
-    cookieStore.set('admin_session', 'authenticated', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 60 * 60 * 24, 
-      path: '/' 
+const prisma = new PrismaClient()
+
+export async function POST(req: Request) {
+  try {
+    const { email, password } = await req.json()
+
+    if (!email || !password) {
+      return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
+    }
+
+    // 1. Find User
+    const student = await prisma.student.findUnique({
+      where: { email: email }
     })
+
+    if (!student) {
+      return NextResponse.json({ error: "No account found. Please register." }, { status: 404 })
+    }
+
+    // 2. Check Password
+    const isValid = await bcrypt.compare(password, student.password)
+
+    if (!isValid) {
+      return NextResponse.json({ error: "Incorrect password." }, { status: 401 })
+    }
+
+    // 3. Success
+    const { password: _, ...studentProfile } = student
     
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ 
+      success: true, 
+      email: student.email,
+      user: studentProfile 
+    })
+
+  } catch (error) {
+    return NextResponse.json({ error: "Server error" }, { status: 500 })
   }
-  
-  return NextResponse.json({ success: false }, { status: 401 })
 }

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { signOut } from 'next-auth/react'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -19,52 +18,62 @@ export default function AdminDashboard() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [profileData, setProfileData] = useState({ name: '', newPassword: '' })
 
-  // --- 1. FETCH REAL DATA ON LOAD ---
+  // --- 1. FETCH DATA ---
   useEffect(() => {
     fetchDashboardData()
   }, [])
 
   const fetchDashboardData = async () => {
     try {
-      const res = await fetch('/api/admin/dashboard')
+      const res = await fetch('/api/get-dashboard', { cache: 'no-store' })
+      if (!res.ok) throw new Error("Failed to fetch") 
       const data = await res.json()
       if (data.stats) {
         setStats(data.stats)
         setApplications(data.recentApplications)
       }
     } catch (error) {
-      console.error('Failed to fetch dashboard data')
+      console.error('Failed to fetch data')
     } finally {
       setLoading(false)
     }
   }
 
-  // --- 2. HANDLE APPROVAL ACTION ---
+  // --- 2. PROFESSIONAL LOGOUT (Updated) ---
+  const handleLogout = async () => {
+     try {
+       // Call the API
+       await fetch('/api/auth/logout', { 
+         method: 'POST',
+         cache: 'no-store' // Don't cache this request
+       })
+       
+       // Standard Next.js navigation
+       router.push('/admin/login')
+       router.refresh() // Ensures the UI updates immediately
+       
+     } catch (error) {
+       console.error("Logout failed", error)
+       router.push('/admin/login')
+     }
+  }
+
+  // --- 3. APPROVE/REJECT ---
   const handleStatusUpdate = async (id: string, newStatus: string) => {
-    // Optimistic Update (Update UI immediately)
     setApplications(prev => prev.filter(app => app.id !== id))
-    
-    // Send to DB
-    await fetch('/api/admin/partner/update', {
+    await fetch('/api/auth/partner/update', { 
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status: newStatus })
     })
-    
-    // Refresh stats to show new revenue/partner count
     fetchDashboardData()
   }
 
-  // --- 3. HANDLE PROFILE UPDATE ---
+  // --- 4. PROFILE UPDATE ---
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Call your profile API here (code provided in previous step)
-    await fetch('/api/admin/profile', {
-        method: 'PUT', 
-        body: JSON.stringify(profileData) 
-    })
     setIsSettingsOpen(false)
-    alert("Profile Updated")
+    alert("Profile Updated (Demo)")
   }
 
   return (
@@ -90,7 +99,12 @@ export default function AdminDashboard() {
           <button onClick={() => setIsSettingsOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 text-slate-500 hover:bg-slate-50 rounded-xl text-sm font-bold">
             <i className="fa-solid fa-gear"></i> Settings
           </button>
-          <button onClick={() => signOut()} className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl text-sm font-bold">
+          
+          {/* ✅ LOGOUT BUTTON */}
+          <button 
+            onClick={handleLogout} 
+            className="w-full flex items-center gap-3 px-4 py-3 text-red-500 hover:bg-red-50 rounded-xl text-sm font-bold cursor-pointer"
+          >
             <i className="fa-solid fa-right-from-bracket"></i> Logout
           </button>
         </div>
@@ -116,7 +130,7 @@ export default function AdminDashboard() {
           <StatCard title="Active Students" value={stats.activeStudents} icon="user-graduate" color="text-red-500" bg="bg-red-50" loading={loading} />
         </div>
 
-        {/* REAL APPLICATIONS TABLE */}
+        {/* APPLICATIONS TABLE */}
         <section className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden mb-10">
           <div className="p-8 border-b border-slate-100">
             <h3 className="text-lg font-bold text-slate-900">New Partner Applications</h3>
@@ -152,18 +166,8 @@ export default function AdminDashboard() {
                       {app.email}
                     </td>
                     <td className="px-8 py-5 text-right flex justify-end gap-3">
-                       <button 
-                         onClick={() => handleStatusUpdate(app.id, 'APPROVED')}
-                         className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-emerald-500 transition-colors shadow-lg hover:shadow-emerald-500/30"
-                       >
-                         Approve
-                       </button>
-                       <button 
-                         onClick={() => handleStatusUpdate(app.id, 'REJECTED')}
-                         className="px-4 py-2 bg-white border border-slate-200 text-slate-500 text-xs font-bold rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors"
-                       >
-                         Decline
-                       </button>
+                        <button onClick={() => handleStatusUpdate(app.id, 'APPROVED')} className="px-4 py-2 bg-slate-900 text-white text-xs font-bold rounded-lg hover:bg-emerald-500 transition-colors">Approve</button>
+                        <button onClick={() => handleStatusUpdate(app.id, 'REJECTED')} className="px-4 py-2 bg-white border border-slate-200 text-slate-500 text-xs font-bold rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors">Decline</button>
                     </td>
                   </tr>
                 ))}
@@ -179,17 +183,8 @@ export default function AdminDashboard() {
            <div className="bg-white p-8 rounded-[2rem] w-full max-w-md shadow-2xl">
               <h3 className="text-xl font-bold mb-4">Update Profile</h3>
               <form onSubmit={handleProfileUpdate} className="space-y-4">
-                 <input 
-                   placeholder="New Display Name" 
-                   className="w-full p-3 bg-slate-50 rounded-xl"
-                   onChange={(e) => setProfileData({...profileData, name: e.target.value})} 
-                 />
-                 <input 
-                   type="password" 
-                   placeholder="New Password" 
-                   className="w-full p-3 bg-slate-50 rounded-xl"
-                   onChange={(e) => setProfileData({...profileData, newPassword: e.target.value})}
-                 />
+                 <input placeholder="New Display Name" className="w-full p-3 bg-slate-50 rounded-xl" onChange={(e) => setProfileData({...profileData, name: e.target.value})} />
+                 <input type="password" placeholder="New Password" className="w-full p-3 bg-slate-50 rounded-xl" onChange={(e) => setProfileData({...profileData, newPassword: e.target.value})} />
                  <div className="flex gap-2 mt-4">
                     <button type="button" onClick={() => setIsSettingsOpen(false)} className="flex-1 py-3 border rounded-xl font-bold">Cancel</button>
                     <button type="submit" className="flex-1 py-3 bg-black text-white rounded-xl font-bold">Save</button>
@@ -202,7 +197,6 @@ export default function AdminDashboard() {
   )
 }
 
-// Simple Stat Component
 function StatCard({ title, value, icon, color, bg, loading }: any) {
   return (
     <div className="bg-white p-6 rounded-[1.5rem] border border-slate-100 shadow-sm">
