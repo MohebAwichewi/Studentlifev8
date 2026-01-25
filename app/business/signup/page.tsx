@@ -40,6 +40,11 @@ export default function BusinessSignup() {
   const [clientSecret, setClientSecret] = useState('')
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [otpSent, setOtpSent] = useState(false)
+  const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('month')
+
+  const toggleBilling = (interval: 'month' | 'year') => {
+    setBillingInterval(interval)
+  }
 
   // --- 1. GOOGLE MAPS INIT ---
   useEffect(() => {

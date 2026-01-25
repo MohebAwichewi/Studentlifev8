@@ -12,9 +12,9 @@ export async function GET() {
     // 2. Fetch Pending Deals (Include business name to show who posted it)
     const pendingDeals = await prisma.deal.findMany({
       where: { status: 'PENDING' },
-      include: { 
+      include: {
         business: {
-          select: { businessName: true, email: true }
+          select: { businessName: true, email: true, logo: true }
         }
       },
       orderBy: { createdAt: 'desc' }

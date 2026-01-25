@@ -483,8 +483,8 @@ function DashboardContent() {
                                     key={status}
                                     onClick={() => setFilterStatus(status)}
                                     className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${filterStatus === status
-                                            ? 'bg-[#0F392B] text-white shadow-md'
-                                            : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'
+                                        ? 'bg-[#0F392B] text-white shadow-md'
+                                        : 'bg-white text-slate-500 hover:bg-slate-50 border border-slate-200'
                                         }`}
                                 >
                                     {status === 'ACCEPTED' ? 'Accepted' : status === 'ALL' ? 'All History' : status.charAt(0) + status.slice(1).toLowerCase()}
@@ -569,6 +569,7 @@ function DashboardContent() {
                                 </div>
                             </div>
                         ) : (
+                            // @ts-ignore
                             <stripe-pricing-table
                                 pricing-table-id="prctbl_1SlTmNIXjVTkZU2iJxgUa5DF"
                                 publishable-key="pk_test_51SlG3oIXjVTkZU2iethTPDJYPTg2lpbjxzY4X9zgyRFpxv5oHhJ0WRsAj0nxC8J9E2KjQcvObViifBLN3JgqaBTj00iZoNHDYp"

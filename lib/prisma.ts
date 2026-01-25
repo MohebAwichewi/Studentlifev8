@@ -13,19 +13,12 @@ console.log('🔧 [PRISMA] Initializing Prisma Client...')
 const globalForPrisma = global as unknown as { prisma: PrismaClient }
 
 export const prisma = globalForPrisma.prisma || new PrismaClient({
-  log: process.env.NODE_ENV === 'development' 
-    ? ['error', 'warn', 'query'] 
+  log: process.env.NODE_ENV === 'development'
+    ? ['error', 'warn', 'query']
     : ['error'],
 })
 
-// Add error handler to prevent hanging
-prisma.$on('beforeConnect', () => {
-  console.log('🔗 [PRISMA] Attempting database connection...')
-})
 
-prisma.$on('afterConnect', () => {
-  console.log('✅ [PRISMA] Database connected successfully')
-})
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
 else console.log('✅ [PRISMA] Production Prisma instance loaded')

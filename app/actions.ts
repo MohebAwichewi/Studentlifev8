@@ -60,12 +60,12 @@ export async function updatePushStatus(id: string | number, status: string) {
   // 1. If Approving, check Rate Limit first (NOT-02)
   if (status === 'APPROVED') {
     const request = await prisma.pushRequest.findUnique({ where: { id: requestId } })
-    
+
     // ✅ FIX: Only check rate limit if it's a BUSINESS request (not Admin/System)
     // We check (request && request.businessId) to ensure it's not null
     if (request && request.businessId) {
-      const dailyCount = await checkRateLimit(request.businessId) 
-      
+      const dailyCount = await checkRateLimit(request.businessId)
+
       // RULE: Max 3 pushes per day per business
       if (dailyCount >= 3) {
         console.warn(`⚠️ Business ${request.businessId} exceeded daily limit.`)
@@ -76,13 +76,13 @@ export async function updatePushStatus(id: string | number, status: string) {
   // 2. Update Status and Log Timestamp (NOT-03)
   await prisma.pushRequest.update({
     where: { id: requestId },
-    data: { 
+    data: {
       status,
       // If approved, set sentAt. If rejected, clear it.
-      sentAt: status === 'APPROVED' ? new Date() : null 
+      sentAt: status === 'APPROVED' ? new Date() : null
     }
   })
-  
+
   revalidatePath('/admin/dashboard')
 }
 
@@ -124,7 +124,7 @@ export async function createDiscount(formData: FormData, businessId: string) {
       title,
       description: formData.get('description') as string,
       category: "Promotion",
-      expiry: expiry, 
+      expiry: expiry,
       businessId: businessId,
     }
   });
@@ -141,7 +141,7 @@ export async function startTrial(businessId: string) {
     where: { id: businessId },
     data: {
       plan: 'PRO_TRIAL',
-      trialEnds: trialEndDate
+      trialEndsAt: trialEndDate
     }
   });
   revalidatePath('/business/dashboard');
@@ -179,6 +179,6 @@ export async function createSupportTicket(formData: FormData, businessId: string
 // ✅ FIX: businessId is now a string
 export async function checkSubscriptionActive(businessId: string) {
   const business = await prisma.business.findUnique({ where: { id: businessId } });
-  if (!business || !business.trialEnds) return false;
-  return new Date() < new Date(business.trialEnds);
+  if (!business || !business.trialEndsAt) return false;
+  return new Date() < new Date(business.trialEndsAt);
 }

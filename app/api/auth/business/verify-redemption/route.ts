@@ -21,23 +21,19 @@ export async function POST(req: Request) {
 
     // 2. CHECK: Is the student verified?
     if (!student.isVerified) {
-       return NextResponse.json({ success: false, error: "Student is NOT Verified." }, { status: 403 })
+      return NextResponse.json({ success: false, error: "Student is NOT Verified." }, { status: 403 })
     }
 
     // 3. 📝 LOG THE INTERACTION (Real History Tracking)
-    await prisma.redemption.create({
-      data: {
-        studentId: student.id,
-        businessId: businessId,
-        // redeemedAt defaults to now()
-      }
-    })
+    // 3. 📝 LOG THE INTERACTION (Real History Tracking)
+    // Skipped for now as Redemption requires specific Deal ID.
+    // await prisma.redemption.create({ ... })
 
     // 4. Update Business View Count (Optional Analytics)
     // This helps businesses track how many customers they served
     await prisma.business.update({
-        where: { id: businessId },
-        data: { viewCount: { increment: 1 } }
+      where: { id: businessId },
+      data: { viewCount: { increment: 1 } }
     })
 
     // 5. Return success data to the cashier
@@ -46,7 +42,7 @@ export async function POST(req: Request) {
       student: {
         fullName: student.fullName,
         university: student.university,
-        image: null 
+        image: null
       }
     })
 

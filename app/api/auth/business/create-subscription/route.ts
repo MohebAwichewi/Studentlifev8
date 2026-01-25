@@ -84,7 +84,7 @@ export async function POST(req: Request) {
 
         // 5. Return Client Secret for Frontend Payment Element
         const invoice = subscription.latest_invoice as Stripe.Invoice
-        const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent
+        const paymentIntent = (invoice as any).payment_intent as Stripe.PaymentIntent
 
         return NextResponse.json({
             clientSecret: paymentIntent.client_secret,

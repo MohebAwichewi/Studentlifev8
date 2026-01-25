@@ -23,7 +23,7 @@ export async function POST(req: Request) {
     // 2. Calculate New Date (Current End + 14 Days)
     // If the trial is already expired, we start the 14 days from 'Now'.
     // If it is still active, we add 14 days to the current end date.
-    const currentEnd = business.trialEnds ? new Date(business.trialEnds) : new Date()
+    const currentEnd = business.trialEndsAt ? new Date(business.trialEndsAt) : new Date()
     const baseDate = currentEnd < new Date() ? new Date() : currentEnd
 
     const newEnd = new Date(baseDate)
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     await prisma.business.update({
       where: { id: businessId },
       data: {
-        trialEnds: newEnd,
+        trialEndsAt: newEnd,
         isTrialActive: true // Reactivate trial if it was expired
       }
     })
