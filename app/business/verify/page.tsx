@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
-import { QrReader } from 'react-qr-reader' // ✅ Real Camera Reader
+import { Scanner } from '@yudiel/react-qr-scanner' // ✅ NEW: Modern Scanner
 
 export default function BusinessVerify() {
   // MOCK BUSINESS ID: In a real app, get this from the logged-in session
@@ -37,31 +37,30 @@ export default function BusinessVerify() {
         setScanResult(data.student) // Show Success Screen
       } else {
         setError(data.error || "Verification Failed")
-        setCameraOn(true) // Restart camera on error
+        // Note: We don't automatically restart camera on error to let user read the message.
+        // They can switch tabs or click a retry button if you add one.
       }
     } catch (err) {
       setError("Network Error")
-      setCameraOn(true)
     } finally {
       setLoading(false)
     }
   }
 
-  // --- HANDLER: QR Scan Event ---
-  const handleScan = (result: any, error: any) => {
-    if (result && cameraOn) {
+  // --- HANDLER: QR Scan Event (Updated for @yudiel/react-qr-scanner) ---
+  const handleScan = (results: any[]) => {
+    if (results && results.length > 0 && cameraOn) {
       try {
-        // The QR code contains JSON: { "id": "...", "valid": true }
-        // We need to parse it safely
-        const text = result?.text
+        const text = results[0].rawValue // ✅ Get raw value from new library
         if (!text) return
 
         let parsedId = text
         try {
+            // Attempt to parse JSON if your QR codes are JSON objects
            const json = JSON.parse(text)
            if (json.id) parsedId = json.id
         } catch(e) {
-           // It might just be the raw ID string
+           // It's just a raw string ID, continue
         }
 
         handleVerification(parsedId)
@@ -108,15 +107,15 @@ export default function BusinessVerify() {
                </button>
             </div>
          ) : (
-            
+           
             /* --- SCANNING INTERFACE --- */
             <div>
                {/* TABS */}
                <div className="flex p-2 gap-2 bg-slate-50 mx-6 mt-6 rounded-xl">
-                  <button onClick={() => { setActiveTab('SCAN'); setCameraOn(true); }} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${activeTab === 'SCAN' ? 'bg-white shadow text-[#5856D6]' : 'text-slate-400 hover:text-slate-600'}`}>
+                  <button onClick={() => { setActiveTab('SCAN'); setCameraOn(true); setError(''); }} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${activeTab === 'SCAN' ? 'bg-white shadow text-[#5856D6]' : 'text-slate-400 hover:text-slate-600'}`}>
                      <i className="fa-solid fa-qrcode mr-2"></i> Camera
                   </button>
-                  <button onClick={() => { setActiveTab('MANUAL'); setCameraOn(false); }} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${activeTab === 'MANUAL' ? 'bg-white shadow text-[#5856D6]' : 'text-slate-400 hover:text-slate-600'}`}>
+                  <button onClick={() => { setActiveTab('MANUAL'); setCameraOn(false); setError(''); }} className={`flex-1 py-2 rounded-lg text-xs font-bold transition ${activeTab === 'MANUAL' ? 'bg-white shadow text-[#5856D6]' : 'text-slate-400 hover:text-slate-600'}`}>
                      <i className="fa-solid fa-keyboard mr-2"></i> Manual
                   </button>
                </div>
@@ -126,15 +125,24 @@ export default function BusinessVerify() {
                   {activeTab === 'SCAN' && (
                      <div className="relative rounded-2xl overflow-hidden bg-black aspect-square shadow-inner">
                         {cameraOn ? (
-                           <>
-                             <QrReader
-                                onResult={handleScan}
-                                constraints={{ facingMode: 'environment' }}
-                                containerStyle={{ width: '100%', height: '100%' }}
-                                videoStyle={{ objectFit: 'cover' }}
+                           <div className="w-full h-full relative">
+                             {/* ✅ NEW SCANNER COMPONENT */}
+                             <Scanner 
+                                onScan={handleScan}
+                                allowMultiple={true}
+                                scanDelay={2000} // Prevent accidental double scans
+                                components={{
+                                  audio: false, // Turn off beep sound if preferred
+                                  finder: false // We draw our own custom frame below
+                                }}
+                                styles={{
+                                    container: { width: '100%', height: '100%' },
+                                    video: { objectFit: 'cover' }
+                                }}
                              />
-                             {/* Overlay Frame */}
-                             <div className="absolute inset-0 border-[40px] border-black/50 flex items-center justify-center">
+                             
+                             {/* Overlay Frame (Custom Design) */}
+                             <div className="absolute inset-0 border-[40px] border-black/50 flex items-center justify-center pointer-events-none">
                                 <div className="w-40 h-40 border-4 border-white/80 rounded-xl relative">
                                    <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-[#5856D6] -mt-1 -ml-1"></div>
                                    <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-[#5856D6] -mt-1 -mr-1"></div>
@@ -142,11 +150,15 @@ export default function BusinessVerify() {
                                    <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-[#5856D6] -mb-1 -mr-1"></div>
                                 </div>
                              </div>
-                             <p className="absolute bottom-4 left-0 right-0 text-center text-white/80 text-xs font-bold">Align QR Code within frame</p>
-                           </>
+                             <p className="absolute bottom-4 left-0 right-0 text-center text-white/80 text-xs font-bold pointer-events-none">Align QR Code within frame</p>
+                           </div>
                         ) : (
-                           <div className="flex items-center justify-center h-full text-white/50">
-                              <i className="fa-solid fa-camera-slash text-3xl"></i>
+                           <div className="flex flex-col items-center justify-center h-full text-white/50">
+                              <i className="fa-solid fa-camera-slash text-3xl mb-2"></i>
+                              <p className="text-xs">Camera Paused</p>
+                              <button onClick={() => setCameraOn(true)} className="mt-4 text-xs bg-white/10 px-4 py-2 rounded-full hover:bg-white/20 transition text-white">
+                                Resume Camera
+                              </button>
                            </div>
                         )}
                      </div>

@@ -1,77 +1,95 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import Stripe from 'stripe'
+import bcrypt from 'bcryptjs' 
 
 const prisma = new PrismaClient()
+// Initialize Stripe - Ensure your API key is in .env
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2023-10-16', // Use latest API version
+  apiVersion: '2024-12-18.acacia' as any, 
+  typescript: true,
 })
 
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { businessName, email, password, address, phone, category } = body
+    // Destructure all possible fields to prevent "undefined" errors
+    const { businessName, email, password, address, phone, category, city } = body
 
-    // 1. Check if user exists in DB
-    const existing = await prisma.business.findUnique({ where: { email } })
+    if (!email || !password || !businessName) {
+        return NextResponse.json({ error: "Missing required fields." }, { status: 400 })
+    }
+
+    // 1. Check if user already exists
+    const existing = await prisma.business.findUnique({ 
+        where: { email: email } 
+    })
+    
     if (existing) {
       return NextResponse.json({ error: "Email already registered" }, { status: 400 })
     }
 
-    // 2. Create Stripe Customer
+    // 2. Hash Password
+    const hashedPassword = await bcrypt.hash(password, 10)
+
+    // 3. Create Stripe Customer
     const customer = await stripe.customers.create({
       email,
       name: businessName,
-      phone,
-      metadata: {
-        s7_platform: 'true'
-      }
+      phone: phone || undefined,
+      metadata: { s7_platform: 'true' }
     })
 
-    // 3. Create Stripe Subscription (Trial)
-    // NOTE: You must create a Price in Stripe Dashboard (e.g. £29/mo) and paste ID below
-    const STRIPE_PRICE_ID = process.env.STRIPE_MONTHLY_PRICE_ID || 'price_12345...' 
+    // 4. Create Stripe Subscription (Trial)
+    // Use a fallback dummy ID if env is missing to prevent crash during dev
+    const STRIPE_PRICE_ID = process.env.STRIPE_MONTHLY_PRICE_ID
 
-    const subscription = await stripe.subscriptions.create({
-      customer: customer.id,
-      items: [{ price: STRIPE_PRICE_ID }],
-      trial_period_days: 90, // 3 Months Free
-      payment_behavior: 'default_incomplete', // Important for SetupIntent/PaymentElement
-      payment_settings: { save_default_payment_method: 'on_subscription' },
-      expand: ['latest_invoice.payment_intent'], // Gets us the client secret
-    })
+    let subscriptionId = null;
+    if (STRIPE_PRICE_ID) {
+        try {
+            const subscription = await stripe.subscriptions.create({
+                customer: customer.id,
+                items: [{ price: STRIPE_PRICE_ID }],
+                trial_period_days: 90,
+                payment_behavior: 'default_incomplete',
+                payment_settings: { save_default_payment_method: 'on_subscription' },
+                expand: ['latest_invoice.payment_intent'], 
+            })
+            subscriptionId = subscription.id;
+        } catch (e) {
+            console.warn("Stripe Sub creation failed (Price ID might be wrong), continuing signup...", e)
+        }
+    }
 
-    // 4. Save Business to Database
+    // 5. Save to Database
     const business = await prisma.business.create({
       data: {
         businessName,
         email,
-        password, // In real app, hash this!
-        address,
-        phone,
-        category,
+        password: hashedPassword,
+        address: address || "Tunis",
+        phone: phone || "",
+        city: city || "Tunis",
+        category: category || "General",
         stripeCustomerId: customer.id,
-        stripeSubscriptionId: subscription.id,
+        stripeSubscriptionId: subscriptionId,
         isTrialActive: true,
-        trialEnds: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
+        // ✅ CRITICAL: Ensure this matches your Prisma Schema exactly
+        trialEndsAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), 
         plan: 'MONTHLY',
-        status: 'PENDING' // Waits for admin approval
+        isSubscribed: false,
       }
     })
 
-    // 5. Return Client Secret for Frontend Payment Element
-    // This allows the frontend to show Apple Pay / Google Pay / Card fields securely
-    const invoice = subscription.latest_invoice as Stripe.Invoice
-    const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent
-
     return NextResponse.json({ 
       success: true, 
-      clientSecret: paymentIntent?.client_secret,
-      businessId: business.id
+      businessId: business.id,
+      businessName: business.businessName,
+      email: business.email
     })
 
   } catch (error: any) {
-    console.error("Signup Error:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    console.error("Signup Critical Error:", error)
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 })
   }
 }

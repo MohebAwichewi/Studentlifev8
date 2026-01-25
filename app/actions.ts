@@ -10,19 +10,19 @@ export async function getBusinesses() {
   })
 }
 
-export async function updateBusinessStatus(id: string | number, status: string) {
-  const businessId = Number(id)
+// ✅ FIX: ID is now a String
+export async function updateBusinessStatus(id: string, status: string) {
   await prisma.business.update({
-    where: { id: businessId },
+    where: { id }, // Passed directly as string
     data: { status }
   })
   revalidatePath('/admin/dashboard')
 }
 
-export async function updateBusinessPlan(id: string | number, plan: string) {
-  const businessId = Number(id)
+// ✅ FIX: ID is now a String
+export async function updateBusinessPlan(id: string, plan: string) {
   await prisma.business.update({
-    where: { id: businessId },
+    where: { id }, // Passed directly as string
     data: { plan }
   })
   revalidatePath('/admin/dashboard')
@@ -38,7 +38,8 @@ export async function getPushRequests() {
 }
 
 // 🔒 NOT-02: Rate Limiting Check (Helper Function)
-async function checkRateLimit(businessId: number) {
+// ✅ FIX: businessId is now a string
+async function checkRateLimit(businessId: string) {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
 
@@ -54,13 +55,16 @@ async function checkRateLimit(businessId: number) {
 }
 
 export async function updatePushStatus(id: string | number, status: string) {
-  const requestId = Number(id)
+  const requestId = Number(id) // Request ID remains a Number (Int)
 
   // 1. If Approving, check Rate Limit first (NOT-02)
   if (status === 'APPROVED') {
     const request = await prisma.pushRequest.findUnique({ where: { id: requestId } })
-    if (request) {
-      const dailyCount = await checkRateLimit(request.businessId)
+    
+    // ✅ FIX: Only check rate limit if it's a BUSINESS request (not Admin/System)
+    // We check (request && request.businessId) to ensure it's not null
+    if (request && request.businessId) {
+      const dailyCount = await checkRateLimit(request.businessId) 
       
       // RULE: Max 3 pushes per day per business
       if (dailyCount >= 3) {
@@ -110,7 +114,8 @@ export async function deleteUniversity(id: number) {
 // --- BUSINESS PORTAL ACTIONS (BP-04, BP-05, BP-07) ---
 
 // ✅ BP-04 & BP-05: Create Discounts with Validity
-export async function createDiscount(formData: FormData, businessId: number) {
+// ✅ FIX: businessId is now a string
+export async function createDiscount(formData: FormData, businessId: string) {
   const title = formData.get('title') as string;
   const expiry = formData.get('expiry') as string; // BP-05: End dates
 
@@ -127,7 +132,8 @@ export async function createDiscount(formData: FormData, businessId: number) {
 }
 
 // ✅ BP-07: Start 3-Month Free Trial
-export async function startTrial(businessId: number) {
+// ✅ FIX: businessId is now a string
+export async function startTrial(businessId: string) {
   const trialEndDate = new Date();
   trialEndDate.setMonth(trialEndDate.getMonth() + 3);
 
@@ -142,7 +148,8 @@ export async function startTrial(businessId: number) {
 }
 
 // ✅ BP-03: Manage Physical Locations
-export async function addLocation(formData: FormData, businessId: number) {
+// ✅ FIX: businessId is now a string
+export async function addLocation(formData: FormData, businessId: string) {
   await prisma.location.create({
     data: {
       name: formData.get('name') as string,
@@ -156,7 +163,8 @@ export async function addLocation(formData: FormData, businessId: number) {
 }
 
 // ✅ BP-16: Contact Support via Portal
-export async function createSupportTicket(formData: FormData, businessId: number) {
+// ✅ FIX: businessId is now a string
+export async function createSupportTicket(formData: FormData, businessId: string) {
   await prisma.ticket.create({
     data: {
       subject: formData.get('subject') as string,
@@ -168,7 +176,8 @@ export async function createSupportTicket(formData: FormData, businessId: number
 }
 
 // ✅ BP-11: Enforcement Logic (Used in Dashboard)
-export async function checkSubscriptionActive(businessId: number) {
+// ✅ FIX: businessId is now a string
+export async function checkSubscriptionActive(businessId: string) {
   const business = await prisma.business.findUnique({ where: { id: businessId } });
   if (!business || !business.trialEnds) return false;
   return new Date() < new Date(business.trialEnds);

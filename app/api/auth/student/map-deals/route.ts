@@ -7,7 +7,7 @@ export async function GET() {
   try {
     // 1. Fetch all APPROVED deals with their Business Locations
     const activeDeals = await prisma.deal.findMany({
-      where: { status: 'APPROVED' },
+      where: { status: 'ACTIVE' },
       include: {
         business: {
           include: {

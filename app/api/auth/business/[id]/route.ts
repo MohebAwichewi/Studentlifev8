@@ -3,38 +3,68 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+// 1. GET SINGLE DEAL (For checking details before edit)
 export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
+  req: Request,
+  { params }: { params: Promise<{ id: string }> } 
 ) {
   try {
-    // Ensure ID is parsed as an Integer since your DB uses Int for Business ID
-    const businessId = parseInt(params.id)
+    const { id } = await params
+    const dealId = parseInt(id)
 
-    if (isNaN(businessId)) {
-      return NextResponse.json({ error: "Invalid Business ID" }, { status: 400 })
-    }
+    if (isNaN(dealId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
 
-    // Fetch Business with Deals and Location
-    const business = await prisma.business.findUnique({
-      where: { id: businessId },
-      include: {
-        deals: {
-          orderBy: { createdAt: 'desc' }
-        },
-        locations: {
-          take: 1 // Fetch the primary location for the map
-        }
+    const deal = await prisma.deal.findUnique({ where: { id: dealId } })
+    
+    if (!deal) return NextResponse.json({ error: "Not found" }, { status: 404 })
+
+    return NextResponse.json({ success: true, deal })
+  } catch (error) {
+    return NextResponse.json({ error: "Server Error" }, { status: 500 })
+  }
+}
+
+// 2. UPDATE DEAL (PUT) - For the "Edit" feature
+export async function PUT(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> } 
+) {
+  try {
+    const { id } = await params
+    const body = await req.json()
+    
+    // Update the deal in the database
+    const updatedDeal = await prisma.deal.update({
+      where: { id: parseInt(id) },
+      data: {
+        title: body.title,
+        description: body.description,
+        discountValue: body.discountValue,
+        expiry: body.expiry,
+        status: body.status || "ACTIVE"
       }
     })
 
-    if (!business) {
-      return NextResponse.json({ error: "Store not found" }, { status: 404 })
-    }
-
-    return NextResponse.json({ business })
+    return NextResponse.json({ success: true, deal: updatedDeal })
   } catch (error) {
-    console.error("API Error:", error)
-    return NextResponse.json({ error: "Server Error" }, { status: 500 })
+    return NextResponse.json({ error: "Update failed" }, { status: 500 })
+  }
+}
+
+// 3. DELETE DEAL (DELETE) - For the "Trash" icon
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> } 
+) {
+  try {
+    const { id } = await params
+    
+    await prisma.deal.delete({
+      where: { id: parseInt(id) }
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    return NextResponse.json({ error: "Delete failed" }, { status: 500 })
   }
 }

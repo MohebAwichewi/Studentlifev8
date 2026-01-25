@@ -3,19 +3,19 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+// ✅ FIX: Type 'params' as a Promise
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // <--- Updated Type
 ) {
   try {
-    // Parse the ID from the URL (e.g., /api/auth/student/deals/15)
-    const dealId = parseInt(params.id)
+    const { id } = await params // <--- Await the params here
+    const dealId = parseInt(id)
 
     if (isNaN(dealId)) {
       return NextResponse.json({ error: "Invalid Deal ID" }, { status: 400 })
     }
 
-    // 1. Fetch the Deal with Business Profile & Locations
     const deal = await prisma.deal.findUnique({
       where: { id: dealId },
       include: {
@@ -25,7 +25,7 @@ export async function GET(
             businessName: true,
             logo: true,
             category: true,
-            locations: true // ✅ We need this for the map
+            locations: true 
           }
         }
       }

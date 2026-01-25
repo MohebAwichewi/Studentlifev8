@@ -4,20 +4,52 @@ import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import SwipeToRedeem from "@/components/SwipeToRedeem" // ✅ Correct Import Name
 
-const GoogleDealMap = dynamic(() => import('../../components/GoogleDealMap'), { 
+// Dynamic import for Map to avoid SSR issues
+const GoogleDealMap = dynamic(() => import('@/components/GoogleDealMap'), { 
   ssr: false,
   loading: () => <div className="h-48 w-full bg-slate-100 animate-pulse rounded-xl"></div>
 })
+
+// --- TYPES ---
+interface Deal {
+  id: number
+  title: string
+  description: string
+  discountValue: string 
+  image?: string
+  isMultiUse: boolean
+}
+
+interface Location {
+  id: number
+  name: string
+  address: string
+  lat: number
+  lng: number
+}
+
+interface Business {
+  id: string
+  businessName: string
+  category: string
+  city: string
+  description: string
+  logo?: string
+  coverImage?: string
+  locations: Location[]
+  deals: Deal[]
+}
 
 export default function BusinessProfile() {
   const { id } = useParams()
   const router = useRouter()
   
   const [loading, setLoading] = useState(true)
-  const [business, setBusiness] = useState<any>(null)
+  const [business, setBusiness] = useState<Business | null>(null)
 
-  // 1. DATA FETCHING (Existing)
+  // 1. DATA FETCHING
   useEffect(() => {
     async function fetchBusiness() {
       try {
@@ -30,7 +62,7 @@ export default function BusinessProfile() {
           router.push('/student/home') 
         }
       } catch (e) {
-        console.error("Failed to load business")
+        console.error("Failed to load business", e)
       } finally {
         setLoading(false)
       }
@@ -38,12 +70,9 @@ export default function BusinessProfile() {
     if (id) fetchBusiness()
   }, [id, router])
 
-  // 2. ✅ NEW: ANALYTICS TRACKING (Fires once on mount)
+  // 2. ANALYTICS TRACKING
   useEffect(() => {
     if (!id) return;
-
-    // We use 'navigator.sendBeacon' if available for better reliability on page exit,
-    // otherwise fallback to standard fetch. For simplicity here, standard fetch:
     const trackView = async () => {
         try {
             await fetch('/api/analytics/track-view', {
@@ -51,17 +80,20 @@ export default function BusinessProfile() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ businessId: id })
             })
-            console.log("👀 View counted")
         } catch (e) {
-            // Fail silently so user experience isn't affected
+            // Fail silently
         }
     }
-
-    // Slight delay to ensure it's a real view, not an accidental instant bounce
     const timer = setTimeout(trackView, 1000)
     return () => clearTimeout(timer)
-    
   }, [id])
+
+  // ✅ 3. HANDLE SWIPE (Redirects to Deal Page for GPS Check)
+  const handleQuickRedeem = () => {
+    if (business && business.deals.length > 0) {
+        router.push(`/student/deal/${business.deals[0].id}`)
+    }
+  }
 
   if (loading) return (
     <div className="min-h-screen bg-white flex items-center justify-center">
@@ -71,7 +103,8 @@ export default function BusinessProfile() {
 
   if (!business) return null
 
-  const mapPins = business.locations.map((loc: any) => ({
+  // Prepare pins for the map
+  const mapPins = business.locations.map((loc) => ({
     id: loc.id,
     lat: loc.lat,
     lng: loc.lng,
@@ -81,8 +114,10 @@ export default function BusinessProfile() {
     businessId: business.id
   }))
 
+  const primaryOfferId = business.deals.length > 0 ? business.deals[0].id : null;
+
   return (
-    <div className="min-h-screen bg-white font-sans pb-20">
+    <div className="min-h-screen bg-white font-sans pb-32">
       
       {/* 1. HERO COVER */}
       <div className="relative h-60 md:h-80 bg-slate-900 w-full overflow-hidden">
@@ -134,18 +169,21 @@ export default function BusinessProfile() {
 
             {business.deals.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    {business.deals.map((deal: any) => (
-                        <Link href={`/student/deal/${deal.id}`} key={deal.id} className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all">
+                    {business.deals.map((deal) => (
+                        <Link href={`/student/deal/${deal.id}`} key={deal.id} className="group bg-white rounded-2xl border border-slate-200 overflow-hidden hover:shadow-lg transition-all flex flex-col">
                             <div className="aspect-[4/3] bg-slate-100 relative">
                                 {deal.image ? (
                                     <img src={deal.image} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-4xl">🎁</div>
                                 )}
+                                <div className="absolute top-3 right-3 bg-[#FF3B30] text-white text-xs font-black px-2 py-1 rounded shadow-sm">
+                                    {deal.discountValue}
+                                </div>
                             </div>
-                            <div className="p-4">
+                            <div className="p-4 flex-1 flex flex-col">
                                 <h3 className="font-bold text-slate-900 line-clamp-2 mb-1 group-hover:text-[#5856D6] transition">{deal.title}</h3>
-                                <p className="text-xs text-slate-500 line-clamp-2">{deal.description}</p>
+                                <p className="text-xs text-slate-500 line-clamp-2 mb-2 flex-1">{deal.description}</p>
                             </div>
                         </Link>
                     ))}
@@ -171,7 +209,7 @@ export default function BusinessProfile() {
                              <GoogleDealMap pins={mapPins} />
                          </div>
                          <ul className="space-y-3">
-                             {business.locations.map((loc: any) => (
+                             {business.locations.map((loc) => (
                                  <li key={loc.id} className="flex gap-3 text-sm text-slate-600">
                                      <i className="fa-solid fa-location-dot text-[#5856D6] mt-1"></i>
                                      <div>
@@ -188,6 +226,20 @@ export default function BusinessProfile() {
              </div>
          </div>
       </div>
+
+      {/* 4. SWIPE REDEEM (Fixed Bottom Bar for First Deal) */}
+      {primaryOfferId && (
+        <div className="fixed bottom-0 left-0 w-full p-6 bg-white border-t border-slate-200 z-50 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+            <div className="max-w-md mx-auto">
+                <p className="text-center text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">
+                    Redeem {business.deals[0].discountValue} Offer
+                </p>
+                {/* ✅ CORRECTED USAGE: onComplete instead of offerId */}
+                <SwipeToRedeem onComplete={handleQuickRedeem} />
+            </div>
+        </div>
+      )}
+
     </div>
   )
 }

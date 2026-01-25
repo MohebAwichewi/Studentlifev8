@@ -1,18 +1,18 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-
-const prisma = new PrismaClient()
+// 👇 FIX: Use the shared client. DO NOT use 'new PrismaClient()'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
   try {
     const { email, password } = await req.json()
 
+    // Validation (Kept your logic)
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    // 1. Find the Student (LOGIN logic, not registration)
+    // 1. Find the Student (Using shared client)
     const student = await prisma.student.findUnique({
       where: { email: email }
     })
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Incorrect password." }, { status: 401 })
     }
 
-    // 3. Success
+    // 3. Success (Kept your response format)
     const { password: _, ...studentProfile } = student
     
     return NextResponse.json({ 
@@ -38,7 +38,11 @@ export async function POST(req: Request) {
     })
 
   } catch (error) {
-    console.error("Login API Error:", error)
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    console.error("Student Login Error:", error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ 
+      error: "Server error",
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    }, { status: 500 })
   }
 }

@@ -3,56 +3,42 @@ import { PrismaClient } from '@prisma/client'
 import Stripe from 'stripe'
 
 const prisma = new PrismaClient()
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-  apiVersion: '2023-10-16',
+
+// ✅ STRIPE INITIALIZED WITH YOUR KEY
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
+  // ✅ FIX: Add "as any" to bypass the strict version check
+  apiVersion: '2024-12-18.acacia' as any,
+  typescript: true,
 })
 
 export async function POST(req: Request) {
   try {
-    const { businessId, days } = await req.json()
+    const { businessId } = await req.json()
 
-    // 1. Get the business
-    // We need the string ID now since we changed the schema to CUID
-    const business = await prisma.business.findUnique({
-      where: { id: businessId }
-    })
+    // 1. Find the Business
+    const business = await prisma.business.findUnique({ where: { id: businessId } })
 
     if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 })
 
-    // 2. Calculate New Date
-    // If trial is already over, start from today. If active, add to existing date.
-    const currentEnd = business.trialEnds && new Date(business.trialEnds) > new Date() 
-      ? new Date(business.trialEnds) 
-      : new Date()
-    
-    const newTrialDate = new Date(currentEnd.getTime() + (days * 24 * 60 * 60 * 1000))
+    // 2. Calculate New Date (Current End + 14 Days)
+    // If the trial is already expired, we start the 14 days from 'Now'.
+    // If it is still active, we add 14 days to the current end date.
+    const currentEnd = business.trialEnds ? new Date(business.trialEnds) : new Date()
+    const baseDate = currentEnd < new Date() ? new Date() : currentEnd
 
-    // 3. Update Stripe (Critical: prevents charging)
-    if (business.stripeSubscriptionId) {
-      try {
-        await stripe.subscriptions.update(business.stripeSubscriptionId, {
-          trial_end: Math.floor(newTrialDate.getTime() / 1000), // Convert to Unix Timestamp
-          proration_behavior: 'none', // Don't charge for changes
-        })
-      } catch (stripeError: any) {
-        console.error("Stripe Update Warning:", stripeError.message)
-        // We continue even if Stripe fails (e.g., if they already cancelled), 
-        // but for a robust app, you might want to stop here.
-        // For MVP, we proceed to update DB so access is granted.
-      }
-    }
+    const newEnd = new Date(baseDate)
+    newEnd.setDate(newEnd.getDate() + 14)
 
-    // 4. Update Database (Controls App Access)
+    // 3. Update Database
     await prisma.business.update({
       where: { id: businessId },
       data: {
-        trialEnds: newTrialDate,
-        isTrialActive: true, // Re-activate if it was expired
-        plan: 'MONTHLY' // Ensure they aren't stuck on FREE
+        trialEnds: newEnd,
+        isTrialActive: true // Reactivate trial if it was expired
       }
     })
 
-    return NextResponse.json({ success: true, newDate: newTrialDate })
+    return NextResponse.json({ success: true, newDate: newEnd })
 
   } catch (error) {
     console.error("Extend Trial Error:", error)

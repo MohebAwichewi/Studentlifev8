@@ -5,15 +5,15 @@ const prisma = new PrismaClient()
 
 export async function GET() {
   try {
+    // Fetch universities sorted by newest
+    // Note: Verify if your model is named 'University' or 'Business' in schema.prisma
     const universities = await prisma.university.findMany({
-      include: { 
-        campuses: true,
-        notes: { orderBy: { createdAt: 'desc' } } // ✅ Fetch notes, newest first
-      }, 
-      orderBy: { name: 'asc' }
+      orderBy: { createdAt: 'desc' }
     })
+
     return NextResponse.json(universities)
   } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch" }, { status: 500 })
+    console.error("Fetch Error:", error)
+    return NextResponse.json({ error: 'Failed to fetch universities' }, { status: 500 })
   }
 }

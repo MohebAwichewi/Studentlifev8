@@ -4,18 +4,31 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
+  console.log("🚀 [API] /student/verify started...")
+
   try {
-    const { email, code } = await req.json()
+    const body = await req.json()
+    const { email, code } = body
+
+    console.log(`🔍 [API] Verifying Student: ${email}`);
+    console.log(`🔑 [API] Input Code: '${code}'`);
 
     // 1. Find the student
     const student = await prisma.student.findUnique({ where: { email } })
 
     if (!student) {
+      console.error("❌ [API] Student not found in DB");
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // 2. Check if OTP matches
-    if (student.otp !== code) {
+    console.log(`💾 [API] Stored Code: '${student.otp}'`);
+
+    // 2. Robust Comparison (Trim spaces + Force String)
+    const inputCode = String(code).trim();
+    const storedCode = String(student.otp).trim();
+
+    if (inputCode !== storedCode) {
+      console.error("❌ [API] Code Mismatch!");
       return NextResponse.json({ error: "Invalid Code" }, { status: 400 })
     }
 
@@ -28,9 +41,15 @@ export async function POST(req: Request) {
       }
     })
 
-    return NextResponse.json({ success: true, studentName: student.fullName })
+    console.log("✅ [API] Student Verification Successful");
+    
+    return NextResponse.json({ 
+      success: true, 
+      studentName: student.fullName 
+    })
 
   } catch (error) {
+    console.error("❌ [API] STUDENT VERIFY ERROR:", error);
     return NextResponse.json({ error: "Verification failed" }, { status: 500 })
   }
 }

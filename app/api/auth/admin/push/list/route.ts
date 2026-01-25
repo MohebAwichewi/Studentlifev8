@@ -11,14 +11,19 @@ export async function GET() {
           select: { businessName: true, category: true }
         } 
       },
-      orderBy: [
-        { status: 'asc' }, // PENDING first (alphabetically P comes before S/R usually, but we want PENDING at top)
-        { createdAt: 'desc' }
-      ]
+      orderBy: { createdAt: 'desc' }
     })
     
-    // Sort manually to ensure PENDING is always first
-    const sorted = requests.sort((a, b) => {
+    // 1. Flatten Data (Matches Frontend Table perfectly)
+    const formatted = requests.map(req => ({
+        ...req,
+        // Pull businessName to top level so Frontend finds it instantly
+        businessName: req.business?.businessName || "System", 
+        category: req.business?.category || "General"
+    }))
+
+    // 2. Sort manually to ensure PENDING is always first
+    const sorted = formatted.sort((a, b) => {
       if (a.status === 'PENDING' && b.status !== 'PENDING') return -1
       if (a.status !== 'PENDING' && b.status === 'PENDING') return 1
       return 0

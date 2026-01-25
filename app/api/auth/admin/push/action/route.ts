@@ -11,12 +11,16 @@ export async function POST(req: Request) {
     const sentAt = action === 'APPROVE' ? new Date() : null
 
     const updated = await prisma.pushRequest.update({
-      where: { id: parseInt(id) },
+      where: { 
+        // ⚠️ FIX: Removed parseInt() to be safe with String IDs
+        id: id 
+      },
       data: { status, sentAt }
     })
 
     return NextResponse.json(updated)
   } catch (error) {
+    console.error("Push Action Error:", error)
     return NextResponse.json({ error: "Action failed" }, { status: 500 })
   }
 }

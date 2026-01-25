@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import bcrypt from 'bcrypt'
-
+import bcrypt from 'bcryptjs'
 export async function POST(req: Request) {
   try {
     const body = await req.json()
@@ -29,6 +28,11 @@ export async function POST(req: Request) {
     return response
 
   } catch (error) {
-    return NextResponse.json({ error: 'Server Error' }, { status: 500 })
+    console.error('Admin Login Error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    return NextResponse.json({ 
+      error: 'Server Error',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    }, { status: 500 })
   }
 }

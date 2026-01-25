@@ -3,23 +3,24 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// GET: Fetch Profile Data
+// GET PROFILE (Using POST to match your structure)
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json()
+    // ✅ FIX: Use businessId instead of email (easier for frontend)
+    const { businessId } = await req.json() 
+
     const business = await prisma.business.findUnique({
-      where: { email },
-      // Select fields to be safe (exclude password)
+      where: { id: businessId }, // Lookup by ID
       select: { 
         id: true,
         businessName: true, 
         email: true, 
         phone: true,
         category: true,
-        description: true, // ✅ New
-        logo: true,        // ✅ New
-        coverImage: true,  // ✅ New
-        website: true,     // ✅ New
+        description: true,
+        logo: true,        
+        coverImage: true,  
+        website: true,     
         address: true
       } 
     })
@@ -29,20 +30,21 @@ export async function POST(req: Request) {
   }
 }
 
-// PUT: Update Profile Data
+// UPDATE PROFILE (PUT)
 export async function PUT(req: Request) {
   try {
     const body = await req.json()
-    const { email, ...updates } = body // Separate email from the rest of the data
+    // ✅ FIX: Use businessId to identify who to update
+    const { businessId, ...updates } = body 
 
     const updated = await prisma.business.update({
-      where: { email },
+      where: { id: businessId },
       data: {
         businessName: updates.businessName,
         phone: updates.phone,
-        description: updates.description, // ✅ Save Description
-        logo: updates.logo,               // ✅ Save Logo URL
-        coverImage: updates.coverImage,   // ✅ Save Cover URL
+        description: updates.description,
+        logo: updates.logo,              
+        coverImage: updates.coverImage,   
         website: updates.website,
         address: updates.address
       }

@@ -23,9 +23,9 @@ export async function POST(req: Request) {
 
     // Default to 'Tunis' if we can't find their uni region
     const studentCity = universityData?.region || "Tunis"
-    
+
     // Campus Coords for the map fallback
-    const campusCoords = universityData 
+    const campusCoords = universityData
       ? { lat: universityData.latitude, lng: universityData.longitude, name: universityData.name }
       : { lat: 36.8065, lng: 10.1815, name: "Tunis (Default)" }
 
@@ -43,44 +43,44 @@ export async function POST(req: Request) {
 
     // 4. FETCH ALL ACTIVE DEALS (Raw Data)
     const rawDeals = await prisma.deal.findMany({
-      where: { status: 'APPROVED' },
+      where: { status: 'ACTIVE' },
       include: { business: true }
     })
 
     // 5. 🚀 THE RELEVANCE ENGINE (Real Scoring Logic)
     // We map over every deal and assign a 'relevanceScore'
     const scoredDeals = rawDeals.map((deal) => {
-        let score = deal.priorityScore || 0 // Start with Admin Priority (0-100)
+      let score = deal.priorityScore || 0 // Start with Admin Priority (0-100)
 
-        // RULE A: Interest Match (+20 Points)
-        // If the user has saved deals in this category before, boost it.
-        if (preferredCategories.has(deal.category)) {
-            score += 20
-        }
+      // RULE A: Interest Match (+20 Points)
+      // If the user has saved deals in this category before, boost it.
+      if (preferredCategories.has(deal.category)) {
+        score += 20
+      }
 
-        // RULE B: Location Match (+15 Points)
-        // If the business is in the same city as the student's university, boost it.
-        if (deal.business.city && deal.business.city.toLowerCase().includes(studentCity.toLowerCase())) {
-            score += 15
-        }
+      // RULE B: Location Match (+15 Points)
+      // If the business is in the same city as the student's university, boost it.
+      if (deal.business.city && deal.business.city.toLowerCase().includes(studentCity.toLowerCase())) {
+        score += 15
+      }
 
-        // RULE C: Newness (+5 Points)
-        // Boost deals created in the last 7 days
-        const oneWeekAgo = new Date()
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-        if (new Date(deal.createdAt) > oneWeekAgo) {
-            score += 5
-        }
+      // RULE C: Newness (+5 Points)
+      // Boost deals created in the last 7 days
+      const oneWeekAgo = new Date()
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+      if (new Date(deal.createdAt) > oneWeekAgo) {
+        score += 5
+      }
 
-        return { ...deal, relevanceScore: score }
+      return { ...deal, relevanceScore: score }
     })
 
     // 6. SORT BY SCORE (Highest Relevance First)
     scoredDeals.sort((a, b) => b.relevanceScore - a.relevanceScore)
 
     // 7. Return the personalized list
-    return NextResponse.json({ 
-      student: { 
+    return NextResponse.json({
+      student: {
         id: student.id,
         fullName: student.fullName,
         email: student.email,

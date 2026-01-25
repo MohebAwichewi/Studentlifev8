@@ -1,43 +1,45 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import bcrypt from 'bcryptjs'
+import bcrypt from 'bcryptjs' // ✅ Changed from 'bcrypt' to 'bcryptjs'
 
 const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
   try {
-    const { email, password } = await req.json()
+    const body = await req.json()
+    const { email, password } = body
 
-    if (!email || !password) {
-      return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
-    }
-
-    // 1. Find User
-    const student = await prisma.student.findUnique({
-      where: { email: email }
+    // 1. Check Admin Table
+    const admin = await prisma.admin.findUnique({
+      where: { email }
     })
 
-    if (!student) {
-      return NextResponse.json({ error: "No account found. Please register." }, { status: 404 })
+    if (!admin) {
+      return NextResponse.json({ error: 'User not found in Admin table' }, { status: 404 })
     }
 
-    // 2. Check Password
-    const isValid = await bcrypt.compare(password, student.password)
+    // 2. Verify Password
+    const match = await bcrypt.compare(password, admin.password)
 
-    if (!isValid) {
-      return NextResponse.json({ error: "Incorrect password." }, { status: 401 })
+    if (!match) {
+      return NextResponse.json({ error: 'Incorrect Password' }, { status: 401 })
     }
 
-    // 3. Success
-    const { password: _, ...studentProfile } = student
+    // 3. Success & Set Cookie
+    const response = NextResponse.json({ success: true })
     
-    return NextResponse.json({ 
-      success: true, 
-      email: student.email,
-      user: studentProfile 
+    // Set a secure HTTP-only cookie
+    response.cookies.set('admin_token', 'secure_session', { 
+        path: '/', 
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 86400 // 1 day
     })
+    
+    return response
 
   } catch (error) {
-    return NextResponse.json({ error: "Server error" }, { status: 500 })
+    console.error("Admin Login Error:", error)
+    return NextResponse.json({ error: 'Server Error' }, { status: 500 })
   }
 }

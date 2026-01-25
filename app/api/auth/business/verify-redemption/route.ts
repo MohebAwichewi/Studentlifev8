@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+// 👇 CRITICAL FIX: Import shared client. DO NOT use 'new PrismaClient()'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
   try {
@@ -11,7 +10,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "Missing ID or Business" }, { status: 400 })
     }
 
-    // 1. Find the Student (Real Database Check)
+    // 1. Find the Student (Using shared client)
     const student = await prisma.student.findUnique({
       where: { id: studentId }
     })
@@ -26,7 +25,6 @@ export async function POST(req: Request) {
     }
 
     // 3. 📝 LOG THE INTERACTION (Real History Tracking)
-    // This creates a permanent record in the 'Redemption' table
     await prisma.redemption.create({
       data: {
         studentId: student.id,
@@ -35,18 +33,25 @@ export async function POST(req: Request) {
       }
     })
 
-    // 4. Return success data to the cashier
+    // 4. Update Business View Count (Optional Analytics)
+    // This helps businesses track how many customers they served
+    await prisma.business.update({
+        where: { id: businessId },
+        data: { viewCount: { increment: 1 } }
+    })
+
+    // 5. Return success data to the cashier
     return NextResponse.json({
       success: true,
       student: {
         fullName: student.fullName,
         university: student.university,
-        image: null // Add profile image here if you have it
+        image: null 
       }
     })
 
   } catch (error) {
     console.error("Redemption Error:", error)
-    return NextResponse.json({ success: false, error: "Server Error" }, { status: 500 })
+    return NextResponse.json({ success: false, error: "Server Error processing ID" }, { status: 500 })
   }
 }

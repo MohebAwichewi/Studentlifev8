@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       include: {
         locations: true,
         deals: {
-          where: { status: 'APPROVED' } // Only show real active deals
+          where: { status: 'ACTIVE' } // Only show real active deals
         }
       }
     })
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       // Check each physical location of the business
       biz.locations.forEach((loc) => {
         const distance = getDistanceFromLatLonInKm(lat, lng, loc.lat, loc.lng)
-        
+
         // If within 15km, add the deal to the list
         if (distance <= 15) {
           biz.deals.forEach(deal => {
@@ -56,7 +56,7 @@ export async function POST(req: Request) {
               businessName: biz.businessName,
               locationName: loc.name,
               // Add businessId so the link works
-              businessId: biz.id 
+              businessId: biz.id
             })
           })
         }
@@ -66,8 +66,8 @@ export async function POST(req: Request) {
     // 3. Sort by nearest first
     nearbyDeals.sort((a, b) => parseFloat(a.distance) - parseFloat(b.distance))
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       deals: nearbyDeals,
       count: nearbyDeals.length
     })

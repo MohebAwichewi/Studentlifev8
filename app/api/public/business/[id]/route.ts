@@ -3,12 +3,14 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+// ✅ FIX: Type 'params' as a Promise
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> } // <--- Change type here
 ) {
   try {
-    const businessId = params.id
+    const { id } = await params // <--- Await the parameters here
+    const businessId = id
 
     // 1. Fetch Business Profile + Active Deals + Locations
     const business = await prisma.business.findUnique({
@@ -16,7 +18,7 @@ export async function GET(
       include: {
         locations: true, // ✅ Gets Real Addresses & Lat/Lng for Map
         deals: {
-          where: { status: 'APPROVED' }, // ✅ Only lists ACTIVE offers
+          where: { status: 'ACTIVE' }, // ✅ Only lists ACTIVE offers
           orderBy: { priorityScore: 'desc' }
         }
       }

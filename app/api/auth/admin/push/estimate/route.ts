@@ -31,12 +31,12 @@ export async function POST(req: Request) {
     let targetUniversities: string[] = []
 
     if (universityId) {
-      // Get the center university
-      const centerUni = await prisma.university.findUnique({ where: { id: parseInt(universityId) } })
+      // ✅ FIX: Removed parseInt to support String IDs
+      const centerUni = await prisma.university.findUnique({ where: { id: universityId } })
       
       if (centerUni) {
         if (radius > 0) {
-          // RADIUS MODE: Find all universities within X km of this one
+          // RADIUS MODE: Find all universities within X km
           const allUnis = await prisma.university.findMany()
           targetUniversities = allUnis
             .filter(u => getDistanceFromLatLonInKm(centerUni.latitude, centerUni.longitude, u.latitude, u.longitude) <= radius)
@@ -59,6 +59,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ count, universitiesIncluded: targetUniversities })
 
   } catch (error) {
+    console.error("Estimate Error:", error)
     return NextResponse.json({ error: "Calculation failed" }, { status: 500 })
   }
 }

@@ -1,22 +1,24 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // 1. Output standalone (Crucial for cPanel)
-  output: 'standalone',
+  output: 'standalone', // ✅ Essential for cPanel
 
-  // 2. Disable TypeScript errors during build
-  typescript: {
-    ignoreBuildErrors: true,
-  },
+  // ✅ Keeps these packages safe
+  serverExternalPackages: ['@prisma/client', 'bcryptjs'],
 
-  // 3. Images Configuration
   images: {
+    unoptimized: true,
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
+      { protocol: 'https', hostname: 'images.unsplash.com' },
+      { protocol: 'https', hostname: 'plus.unsplash.com' },
+      { protocol: 'https', hostname: 'res.cloudinary.com' },
     ],
   },
+
+
+
+  typescript: {
+    ignoreBuildErrors: true,
+  }
 };
 
 module.exports = nextConfig;

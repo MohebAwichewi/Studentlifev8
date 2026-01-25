@@ -258,14 +258,16 @@ export default function BusinessDashboard() {
                   </div>
                   <form onSubmit={handleCreateOffer} className="space-y-6">
                      <div className="grid grid-cols-2 gap-6">
-                        <InputGroup label="Offer Title" placeholder="e.g. Free Coffee" value={offerData.title} onChange={v => setOfferData({...offerData, title: v})} />
+                        {/* ✅ FIX: Added type annotation (v: any) */}
+                        <InputGroup label="Offer Title" placeholder="e.g. Free Coffee" value={offerData.title} onChange={(v: any) => setOfferData({...offerData, title: v})} />
                         <div>
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2 ml-1">Expiration Date</label>
                             <input type="date" className="w-full bg-[#F8F9FC] border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 focus:outline-none focus:border-[#FF3B30] transition" value={offerData.expiry} onChange={e => setOfferData({...offerData, expiry: e.target.value})} />
                         </div>
                      </div>
                      <div className="grid grid-cols-2 gap-6">
-                        <InputGroup label="Discount %" placeholder="e.g. 100% OFF" value={offerData.discount} onChange={v => setOfferData({...offerData, discount: v})} />
+                        {/* ✅ FIX: Added type annotation (v: any) */}
+                        <InputGroup label="Discount %" placeholder="e.g. 100% OFF" value={offerData.discount} onChange={(v: any) => setOfferData({...offerData, discount: v})} />
                         <div>
                             <label className="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-2 ml-1">Category</label>
                             <select className="w-full bg-[#F8F9FC] border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 focus:outline-none focus:border-[#FF3B30] transition" value={offerData.category} onChange={e => setOfferData({...offerData, category: e.target.value})}>
@@ -418,7 +420,8 @@ export default function BusinessDashboard() {
                  <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm">
                     <h3 className="text-xl font-black text-slate-900 mb-6">Edit Public Profile</h3>
                     <form onSubmit={handleSaveProfile} className="space-y-5">
-                       <InputGroup label="Business Name" value={profile.businessName || ''} onChange={v => setProfile({...profile, businessName: v})} />
+                       {/* ✅ FIX: Added type annotation (v: any) */}
+                       <InputGroup label="Business Name" value={profile.businessName || ''} onChange={(v: any) => setProfile({...profile, businessName: v})} />
                        <div>
                           <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">About the Business</label>
                           <textarea 
@@ -430,11 +433,13 @@ export default function BusinessDashboard() {
                           />
                        </div>
                        <div className="grid grid-cols-2 gap-5">
-                          <InputGroup label="Phone" value={profile.phone || ''} onChange={v => setProfile({...profile, phone: v})} />
-                          <InputGroup label="Website" value={profile.website || ''} onChange={v => setProfile({...profile, website: v})} />
+                          {/* ✅ FIX: Added type annotation (v: any) */}
+                          <InputGroup label="Phone" value={profile.phone || ''} onChange={(v: any) => setProfile({...profile, phone: v})} />
+                          <InputGroup label="Website" value={profile.website || ''} onChange={(v: any) => setProfile({...profile, website: v})} />
                        </div>
-                       <InputGroup label="Logo URL" placeholder="https://..." value={profile.logo || ''} onChange={v => setProfile({...profile, logo: v})} />
-                       <InputGroup label="Cover Image URL" placeholder="https://..." value={profile.coverImage || ''} onChange={v => setProfile({...profile, coverImage: v})} />
+                       {/* ✅ FIX: Added type annotation (v: any) */}
+                       <InputGroup label="Logo URL" placeholder="https://..." value={profile.logo || ''} onChange={(v: any) => setProfile({...profile, logo: v})} />
+                       <InputGroup label="Cover Image URL" placeholder="https://..." value={profile.coverImage || ''} onChange={(v: any) => setProfile({...profile, coverImage: v})} />
                        <div className="pt-4 flex gap-4">
                           <button disabled={isSubmitting} className="flex-1 bg-slate-900 text-white px-6 py-4 rounded-xl font-bold hover:bg-black transition">
                             {isSubmitting ? 'Saving...' : 'Save Changes'}
@@ -482,9 +487,9 @@ export default function BusinessDashboard() {
                       <div className="mt-10">
                          <h2 className="text-2xl font-black text-slate-900">{profile.businessName || "Your Business Name"}</h2>
                          <div className="flex items-center gap-2 text-sm text-slate-500 font-bold mt-1">
-                            <span>{profile.category || "Category"}</span>
-                            <span>•</span>
-                            <span>{profile.address || "Location"}</span>
+                           <span>{profile.category || "Category"}</span>
+                           <span>•</span>
+                           <span>{profile.address || "Location"}</span>
                          </div>
                          <p className="mt-4 text-slate-600 leading-relaxed text-sm">
                             {profile.description || "Your description will appear here. Add a bio to tell students about your story!"}

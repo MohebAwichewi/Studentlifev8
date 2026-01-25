@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -8,47 +8,108 @@ export default function AdvancedDealBuilder() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   
+  // --- AUTH STATE ---
+  const [businessEmail, setBusinessEmail] = useState('')
+  const [businessId, setBusinessId] = useState('')
+
+  // --- CATEGORY STATE (✅ NEW) ---
+  const [categories, setCategories] = useState<any[]>([])
+  const [subCategories, setSubCategories] = useState<any[]>([])
+
   // --- FORM STATE ---
-  // Removed 'location' from state
   const [formData, setFormData] = useState({
     title: '',
     discount: '',
-    category: 'Food',
+    category: '', // Changed default to empty string to force selection
+    subCategory: '', // ✅ Added subCategory
     validUntil: '',
     description: '',
-    terms: ''
+    terms: '',
+    isMultiUse: false
   })
+
+  // --- 1. LOAD AUTH DATA & CATEGORIES ---
+  useEffect(() => {
+    // Auth Check
+    const email = localStorage.getItem('businessEmail')
+    const id = localStorage.getItem('businessId')
+
+    if (!email || !id) {
+        alert("Session expired. Please log in again.")
+        router.push('/business/login')
+    } else {
+        setBusinessEmail(email)
+        setBusinessId(id)
+    }
+
+    // ✅ Fetch Categories
+    fetch('/api/auth/admin/categories')
+        .then(res => res.json())
+        .then(data => setCategories(data))
+        .catch(err => console.error("Failed to load categories", err))
+  }, [router])
+
+  // --- 2. HANDLE CATEGORY CHANGE ---
+  const handleCategoryChange = (e: any) => {
+    const selectedCatName = e.target.value
+    
+    // Find the selected category object to get its children
+    const selectedCat = categories.find(c => c.name === selectedCatName)
+    
+    setFormData({
+        ...formData, 
+        category: selectedCatName, 
+        subCategory: '' // Reset sub when main changes
+    })
+    
+    setSubCategories(selectedCat?.children || [])
+  }
 
   // --- ACTIONS ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
 
+    const fullDescription = formData.terms 
+        ? `${formData.description}\n\nTerms & Conditions:\n${formData.terms}`
+        : formData.description
+
     try {
-      // 1. Send Data to Real API
-      const res = await fetch('/api/business/create-deal', {
+      const res = await fetch('/api/auth/deals/create', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+            email: businessEmail,       
+            businessId: businessId,     
+            title: formData.title,
+            discount: formData.discount,
+            category: formData.category,
+            subCategory: formData.subCategory, // ✅ Send SubCategory
+            expiry: formData.validUntil,
+            description: fullDescription,
+            isMultiUse: formData.isMultiUse 
+        })
       })
 
-      if (res.ok) {
-        // 2. Success Feedback
+      const data = await res.json()
+
+      if (res.ok && data.success) {
         setTimeout(() => {
           setIsSubmitting(false)
           alert("Success: Deal is now LIVE.")
-          router.push('/business') // Redirect back to dashboard
+          router.push('/business/dashboard') 
         }, 1000)
       } else {
-        throw new Error("Failed to create deal")
+        throw new Error(data.error || "Failed to create deal")
       }
-    } catch (error) {
+    } catch (error: any) {
       setIsSubmitting(false)
-      alert("Error: Could not publish deal. Please try again.")
+      alert(`Error: ${error.message}`)
     }
   }
 
   const handleSignOut = () => {
+    localStorage.clear()
     router.push('/business/login')
   }
 
@@ -65,7 +126,7 @@ export default function AdvancedDealBuilder() {
              </Link>
           </div>
           <nav className="p-4 space-y-1">
-             <Link href="/business" className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition">
+             <Link href="/business/dashboard" className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-500 hover:bg-slate-50 transition">
                <i className="fa-solid fa-arrow-left w-5 text-center"></i> Back to Dashboard
              </Link>
              <div className="px-4 py-2 text-xs font-bold text-slate-400 uppercase mt-4">Deal Management</div>
@@ -90,7 +151,7 @@ export default function AdvancedDealBuilder() {
            <div className="flex items-center gap-6">
               <div className="text-right hidden sm:block">
                  <div className="text-sm font-black text-slate-900">Partner Store</div>
-                 <div className="text-xs font-bold text-slate-400">Merchant Portal</div>
+                 <div className="text-xs font-bold text-slate-400">{businessEmail}</div>
               </div>
               <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center font-black text-slate-500 border border-slate-200">PS</div>
            </div>
@@ -123,32 +184,49 @@ export default function AdvancedDealBuilder() {
                           />
                        </div>
 
+                       <div>
+                          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Discount Value</label>
+                          <input 
+                            required
+                            type="text" 
+                            placeholder="e.g. 20%" 
+                            className="w-full bg-[#F8F9FC] border border-slate-200 rounded-xl px-5 py-4 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#FF3B30] transition"
+                            value={formData.discount}
+                            onChange={e => setFormData({...formData, discount: e.target.value})}
+                          />
+                       </div>
+
+                       {/* ✅ UPDATED CATEGORY SECTION */}
                        <div className="grid grid-cols-2 gap-6">
-                          <div>
-                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Discount Value</label>
-                             <input 
-                               required
-                               type="text" 
-                               placeholder="e.g. 20%" 
-                               className="w-full bg-[#F8F9FC] border border-slate-200 rounded-xl px-5 py-4 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#FF3B30] transition"
-                               value={formData.discount}
-                               onChange={e => setFormData({...formData, discount: e.target.value})}
-                             />
-                          </div>
-                          <div>
-                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Category</label>
-                             <select 
-                               className="w-full bg-[#F8F9FC] border border-slate-200 rounded-xl px-5 py-4 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#FF3B30] transition appearance-none"
-                               value={formData.category}
-                               onChange={e => setFormData({...formData, category: e.target.value})}
-                             >
-                                <option>Food & Drink</option>
-                                <option>Retail & Fashion</option>
-                                <option>Technology</option>
-                                <option>Entertainment</option>
-                                <option>Services</option>
-                             </select>
-                          </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Category</label>
+                                <select 
+                                    required
+                                    className="w-full bg-[#F8F9FC] border border-slate-200 rounded-xl px-5 py-4 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#FF3B30] appearance-none"
+                                    value={formData.category}
+                                    onChange={handleCategoryChange}
+                                >
+                                    <option value="">Select...</option>
+                                    {categories.map(cat => (
+                                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Sub Category</label>
+                                <select 
+                                    className={`w-full bg-[#F8F9FC] border border-slate-200 rounded-xl px-5 py-4 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#FF3B30] appearance-none ${subCategories.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    value={formData.subCategory || ''}
+                                    onChange={e => setFormData({...formData, subCategory: e.target.value})}
+                                    disabled={subCategories.length === 0}
+                                >
+                                    <option value="">Select...</option>
+                                    {subCategories.map(sub => (
+                                        <option key={sub.id} value={sub.name}>{sub.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                        </div>
 
                        <div>
@@ -203,7 +281,25 @@ export default function AdvancedDealBuilder() {
                           />
                        </div>
 
-                       {/* Publish Button is now here */}
+                       {/* Multi-Use Toggle */}
+                       <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-sm font-bold text-slate-900">Reusable Offer?</label>
+                                <input 
+                                    type="checkbox" 
+                                    className="w-5 h-5 accent-[#FF3B30]"
+                                    checked={formData.isMultiUse}
+                                    onChange={e => setFormData({...formData, isMultiUse: e.target.checked})}
+                                />
+                            </div>
+                            <p className="text-xs text-slate-500 leading-relaxed">
+                                {formData.isMultiUse 
+                                    ? "✅ Students can swipe this multiple times (5-minute cooldown)." 
+                                    : "🔒 One-time use per student."}
+                            </p>
+                       </div>
+
+                       {/* Publish Button */}
                        <button 
                          type="submit" 
                          disabled={isSubmitting}

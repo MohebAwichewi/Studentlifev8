@@ -4,11 +4,33 @@ import React, { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
+// ✅ Helper Function for Age Validation
+const validateAge = (dateString: string) => {
+  if (!dateString) return false;
+  
+  const today = new Date();
+  const birthDate = new Date(dateString);
+  
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  
+  // Adjust age if the birthday hasn't happened yet this year
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+
+  // ✅ CHECK: Must be between 15 and 25 (inclusive)
+  return age >= 15 && age <= 25;
+};
+
 export default function StudentSignup() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<'form' | 'verification'>('form')
   
+  // ✅ Notification State
+  const [notification, setNotification] = useState<{ message: string, type: 'error' | 'success' } | null>(null)
+
   // --- FORM STATE ---
   const [formData, setFormData] = useState({
     fullName: '',
@@ -21,13 +43,34 @@ export default function StudentSignup() {
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']) 
 
+  // Helper to show notification
+  const showToast = (message: string, type: 'error' | 'success') => {
+    setNotification({ message, type })
+    setTimeout(() => setNotification(null), 4000)
+  }
+
   // --- ACTION 1: REAL SIGNUP (DATABASE) ---
   const handleGetMagicLink = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setNotification(null)
+
+    // ✅ 1. Validate Age Before API Call
+    if (!formData.dob) {
+        showToast("Please enter your date of birth.", 'error')
+        setLoading(false)
+        return;
+    }
+
+    const isValidAge = validateAge(formData.dob);
+    
+    if (!isValidAge) {
+        showToast("Eligibility Requirement: You must be between 15 and 25 years old to join.", 'error')
+        setLoading(false)
+        return; // STOP EXECUTION
+    }
 
     try {
-      // Call the REAL Signup API
       const res = await fetch('/api/auth/student/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -37,12 +80,13 @@ export default function StudentSignup() {
       const data = await res.json()
 
       if (res.ok) {
-        setStep('verification') // Move to OTP step on success
+        showToast("Verification code sent!", 'success')
+        setStep('verification')
       } else {
-        alert(data.error || "Signup failed. Please try again.")
+        showToast(data.error || "Signup failed. Please try again.", 'error')
       }
     } catch (error) {
-      alert("Network error. Please check your connection.")
+      showToast("Network error. Please check your connection.", 'error')
     } finally {
       setLoading(false)
     }
@@ -56,7 +100,6 @@ export default function StudentSignup() {
     const code = otp.join('')
     
     try {
-      // Call the REAL Verify API
       const res = await fetch('/api/auth/student/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,16 +109,15 @@ export default function StudentSignup() {
       const data = await res.json()
 
       if (res.ok) {
-        // Success! Save session and redirect
         localStorage.setItem('studentName', data.studentName)
         localStorage.setItem('isStudentLoggedIn', 'true')
-        alert("Account Verified Successfully!")
-        router.push('/student/home') 
+        showToast("Account Verified Successfully!", 'success')
+        setTimeout(() => router.push('/student/home'), 1500)
       } else {
-        alert(data.error || "Invalid Code.")
+        showToast(data.error || "Invalid Code.", 'error')
       }
     } catch (error) {
-      alert("Verification failed.")
+      showToast("Verification failed.", 'error')
     } finally {
       setLoading(false)
     }
@@ -91,31 +133,59 @@ export default function StudentSignup() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F4F7FE] px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center bg-[#F4F7FE] px-4 py-12 relative">
+      
+      {/* FLOATING NOTIFICATION */}
+      {notification && (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-4 px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-top-5 duration-300 border bg-white ${notification.type === 'error' ? 'border-red-100' : 'border-green-100'}`}>
+           <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${notification.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+              <i className={`fa-solid ${notification.type === 'error' ? 'fa-triangle-exclamation' : 'fa-check'}`}></i>
+           </div>
+           <div>
+              <h4 className={`font-black text-sm ${notification.type === 'error' ? 'text-red-600' : 'text-green-600'}`}>
+                {notification.type === 'error' ? 'Error' : 'Success'}
+              </h4>
+              <p className="text-xs font-bold text-slate-500 mt-0.5">{notification.message}</p>
+           </div>
+           <button onClick={() => setNotification(null)} className="ml-4 text-slate-300 hover:text-slate-500 transition">
+              <i className="fa-solid fa-xmark"></i>
+           </button>
+        </div>
+      )}
+
       <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-2xl border border-slate-100 relative overflow-hidden transition-all duration-500">
         
+        {/* ❌ NEW: CLOSE BUTTON (Top Right) */}
+        <Link 
+          href="/" 
+          className="absolute top-6 right-6 z-50 w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all"
+          title="Return Home"
+        >
+          <i className="fa-solid fa-xmark text-lg"></i>
+        </Link>
+
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-100 rounded-full blur-[80px] -mr-16 -mt-16 opacity-50 pointer-events-none"></div>
 
         <div className="relative z-10">
           
           <div className="text-center mb-8">
-             <Link href="/" className="inline-flex items-center gap-1 mb-4 group hover:opacity-80 transition">
-               <span className="text-3xl font-black tracking-tighter text-slate-900">Student</span>
-               <span className="bg-[#FF3B30] text-white px-2 py-0.5 rounded-md text-xl font-black tracking-wide">.LIFE</span>
-             </Link>
-             
-             {step === 'form' ? (
-               <>
-                 <h2 className="text-2xl font-black text-slate-900 mb-1">Join the Network</h2>
-                 <p className="text-slate-500 text-sm font-medium">Create your verified student ID.</p>
-               </>
-             ) : (
-               <>
-                 <h2 className="text-2xl font-black text-slate-900 mb-1">Check Your Email</h2>
-                 <p className="text-slate-500 text-sm font-medium">We sent a verification code to <b>{formData.email}</b></p>
-                 <p className="text-xs text-slate-400 mt-2">(Check your server console for the code in MVP mode)</p>
-               </>
-             )}
+              <Link href="/" className="inline-flex items-center gap-1 mb-4 group hover:opacity-80 transition">
+                <span className="text-3xl font-black tracking-tighter text-slate-900">Student</span>
+                <span className="bg-[#FF3B30] text-white px-2 py-0.5 rounded-md text-xl font-black tracking-wide">.LIFE</span>
+              </Link>
+              
+              {step === 'form' ? (
+                <>
+                  <h2 className="text-2xl font-black text-slate-900 mb-1">Join the Network</h2>
+                  <p className="text-slate-500 text-sm font-medium">Create your verified student ID.</p>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-2xl font-black text-slate-900 mb-1">Check Your Email</h2>
+                  <p className="text-slate-500 text-sm font-medium">We sent a verification code to <b>{formData.email}</b></p>
+                  <p className="text-xs text-slate-400 mt-2">(Check your server console for the code in MVP mode)</p>
+                </>
+              )}
           </div>
 
           {step === 'form' && (
@@ -128,7 +198,14 @@ export default function StudentSignup() {
                   </div>
                   <div>
                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Date of Birth</label>
-                     <input required type="date" className="w-full bg-[#F8F9FC] border border-slate-200 rounded-xl px-4 py-3.5 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#FF3B30] transition" value={formData.dob} onChange={e => setFormData({...formData, dob: e.target.value})} />
+                     {/* ✅ DOB INPUT (Connected to State) */}
+                     <input 
+                        required 
+                        type="date" 
+                        className={`w-full bg-[#F8F9FC] border rounded-xl px-4 py-3.5 font-bold text-slate-900 focus:outline-none focus:ring-2 transition ${notification?.type === 'error' && notification.message.includes('Eligibility') ? 'border-red-500 focus:ring-red-500' : 'border-slate-200 focus:ring-[#FF3B30]'}`} 
+                        value={formData.dob} 
+                        onChange={e => setFormData({...formData, dob: e.target.value})} 
+                     />
                   </div>
                </div>
 

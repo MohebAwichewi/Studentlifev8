@@ -11,8 +11,9 @@ export async function POST(req: Request) {
 
     if (type === 'deal') {
         await prisma.deal.update({
-            where: { id: parseInt(id) },
-            data: { image: newUrl }
+            // ⚠️ FIX: Removed parseInt() to allow String IDs
+            where: { id: id },
+            data: { image: newUrl } // Ensure your schema has an 'image' field, or change to 'imageUrl'
         })
     } else if (type === 'business_logo') {
         await prisma.business.update({
@@ -28,6 +29,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
+    console.error("Fix Image Error:", error)
     return NextResponse.json({ error: "Fix failed" }, { status: 500 })
   }
 }

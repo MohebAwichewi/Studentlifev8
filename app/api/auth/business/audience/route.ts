@@ -5,17 +5,17 @@ const prisma = new PrismaClient()
 
 export async function GET() {
   try {
-    // 1. Count Total Verified Students in Database
+    // 1. Count Total Verified Students
     const totalStudents = await prisma.student.count({
       where: { isVerified: true }
     })
 
-    // 2. Group by University (Real Data Analysis)
+    // 2. Group by University (Top 4)
     const uniStats = await prisma.student.groupBy({
       by: ['university'],
       _count: { university: true },
       orderBy: { _count: { university: 'desc' } },
-      take: 4 // Top 4 Unis
+      take: 4 
     })
 
     // Format for Frontend
@@ -29,6 +29,7 @@ export async function GET() {
       universities 
     })
   } catch (error) {
+    console.error("Audience API Error:", error)
     return NextResponse.json({ totalNearby: 0, universities: [] })
   }
 }
