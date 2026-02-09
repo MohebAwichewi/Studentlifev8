@@ -34,7 +34,11 @@ export default function DealDetailsPage() {
             try {
                 const res = await fetch(`/api/auth/student/deals/${id}`)
                 const data = await res.json()
-                if (data.success) setDeal(data.deal)
+                if (data.success) {
+                    setDeal(data.deal)
+                    // ✅ Increment View
+                    fetch(`/api/auth/deals/${data.deal.id}/view`, { method: 'POST' })
+                }
                 else router.push('/student/home')
             } catch (e) { console.error("Failed to load deal") }
             finally { setLoading(false) }
@@ -59,19 +63,24 @@ export default function DealDetailsPage() {
                 )
                 setDistance(Math.floor(dist))
 
-                // ✅ THE 15 METER RULE
-                if (dist <= 15) {
+                // ✅ THE 100 METER RULE (Relaxed for better UX)
+                if (dist <= 100) {
                     setIsWithinRange(true)
                     setLocationError('')
                 } else {
                     setIsWithinRange(false)
-                    setLocationError(`Too far. Move ${Math.floor(dist - 15)}m closer.`)
+                    setLocationError(`Too far. Move ${Math.floor(dist - 100)}m closer.`)
                 }
             },
             (err) => {
                 console.warn(err)
                 setLocationError("Location access required to redeem.")
                 setIsWithinRange(false)
+
+                // ✅ Stop watching if user denied permission to prevent console spam
+                if (err.code === 1) { // 1 = PERMISSION_DENIED
+                    navigator.geolocation.clearWatch(watchId)
+                }
             },
             { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
         )
@@ -125,23 +134,40 @@ export default function DealDetailsPage() {
     if (!deal) return null
 
     // Map Pins
-    const mapPins = deal.business.locations ? deal.business.locations.map((loc: any) => ({
+    let mapPins = deal.business.locations ? deal.business.locations.map((loc: any) => ({
         id: loc.id, lat: loc.lat, lng: loc.lng, businessName: deal.business.businessName, title: deal.title, category: deal.category
     })) : []
+
+    // ✅ FALLBACK: If no locations, use Business Main Coordinates
+    if (mapPins.length === 0 && (deal.business.latitude && deal.business.latitude !== 0)) {
+        mapPins = [{
+            id: 999,
+            lat: deal.business.latitude,
+            lng: deal.business.longitude,
+            businessName: deal.business.businessName,
+            title: deal.title,
+            category: deal.category
+        }]
+    }
 
     return (
         <div className="min-h-screen bg-white font-sans pb-20">
 
             {/* 1. HERO HEADER */}
-            <div className="relative w-full h-64 md:h-80 bg-slate-100 overflow-hidden">
-                {deal.image ? (
-                    <img src={deal.image} alt={deal.title} className="w-full h-full object-cover" />
+            {/* 1. HERO HEADER (Business Cover) */}
+            <div className="relative w-full h-64 md:h-80 bg-slate-100 overflow-hidden flex items-center justify-center">
+                {deal.business.coverImage ? (
+                    <div className="w-full h-full">
+                        {/* Added overlay for better text contrast if we ever add text here later, for now just nice darkening */}
+                        <div className="absolute inset-0 bg-black/10 z-10"></div>
+                        <img src={deal.business.coverImage} alt="Cover" className="w-full h-full object-cover" />
+                    </div>
                 ) : (
-                    <div className="w-full h-full bg-gradient-to-r from-[#5856D6] to-[#8E8CFF] flex items-center justify-center text-6xl">
+                    <div className="w-full h-full bg-[#007AFF] flex items-center justify-center text-6xl">
                         {deal.category === 'Food' ? '🍔' : '🛍️'}
                     </div>
                 )}
-                <Link href="/student/home" className="absolute top-6 left-6 w-10 h-10 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-slate-900 transition shadow-lg">
+                <Link href="/student/home" className="absolute top-6 left-6 w-10 h-10 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white hover:text-slate-900 transition shadow-lg z-20">
                     <i className="fa-solid fa-arrow-left"></i>
                 </Link>
             </div>
@@ -166,6 +192,18 @@ export default function DealDetailsPage() {
                         </Link>
 
                         <h1 className="text-3xl md:text-4xl font-black text-slate-900 mb-6 leading-tight">{deal.title}</h1>
+
+                        {/* ✅ MOVED DEAL IMAGE HERE */}
+                        {deal.image && (
+                            <div className="w-full h-64 md:h-80 mb-8 rounded-2xl overflow-hidden shadow-sm border border-slate-100 relative group">
+                                <img
+                                    src={deal.image}
+                                    alt={deal.title}
+                                    className="w-full h-full object-cover transition duration-700 group-hover:scale-105"
+                                />
+                            </div>
+                        )}
+
                         <div className="prose prose-slate max-w-none">
                             <h3 className="text-lg font-black text-slate-900 mb-2">Terms & Details</h3>
                             <p className="text-slate-600 leading-relaxed whitespace-pre-line">{deal.description}</p>
@@ -219,8 +257,12 @@ export default function DealDetailsPage() {
                                     {/* THE SWIPE BUTTON */}
                                     <SwipeToRedeem
                                         onComplete={handleRedeemSuccess}
+                                        onStart={() => {
+                                            // ✅ Track Click (Intent to Redeem)
+                                            if (deal) fetch(`/api/auth/deals/${deal.id}/click`, { method: 'POST' })
+                                        }}
                                         disabled={!isWithinRange}
-                                        disabledText={locationError || "Move Closer (15m)"}
+                                        disabledText={locationError || "Move Closer (100m)"}
                                     />
 
                                     <p className="text-[10px] text-slate-400 mt-4 leading-tight">
@@ -231,9 +273,15 @@ export default function DealDetailsPage() {
                         </div>
 
                         {/* Map */}
-                        <div className="rounded-xl overflow-hidden border border-slate-200 h-48 shadow-sm relative">
-                            <GoogleDealMap pins={mapPins} />
-                            <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded text-[10px] font-bold shadow">
+                        <div className="rounded-xl overflow-hidden border border-slate-200 h-48 shadow-sm relative bg-slate-100">
+                            {/* ✅ Embed Support */}
+                            {deal.business.googleMapEmbed ? (
+                                <div dangerouslySetInnerHTML={{ __html: deal.business.googleMapEmbed }} className="w-full h-full [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:border-0" />
+                            ) : (
+                                <GoogleDealMap pins={mapPins} />
+                            )}
+
+                            <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded text-[10px] font-bold shadow pointer-events-none">
                                 Shop Location
                             </div>
                         </div>

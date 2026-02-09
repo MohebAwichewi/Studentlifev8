@@ -1,21 +1,33 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export async function PUT(req: Request) {
   try {
-    const { id, status, plan } = await req.json()
+    const body = await req.json()
+    const { id, ...updateData } = body
 
-    // 1. Prepare dynamic data object (Only update what is sent)
-    const updateData: any = {}
-    if (status) updateData.status = status
-    if (plan) updateData.plan = plan
+    if (!id) return NextResponse.json({ error: "Missing ID" }, { status: 400 })
 
-    // 2. Update Database
+    // ✅ Update Database with verified fields
     const updated = await prisma.business.update({
       where: { id },
-      data: updateData
+      data: {
+        businessName: updateData.businessName,
+        description: updateData.description,
+        city: updateData.city,
+        address: updateData.address,
+        phone: updateData.phone,
+        website: updateData.website,
+        googleMapsUrl: updateData.googleMapsUrl,
+        googleMapEmbed: updateData.googleMapEmbed,
+        category: updateData.category,
+        // Only update images if a new value is provided (prevents overwriting with null)
+        ...(updateData.logo && { logo: updateData.logo }),
+        ...(updateData.coverImage && { coverImage: updateData.coverImage }),
+        // Status/Plan can also be updated here if sent
+        ...(updateData.status && { status: updateData.status }),
+        ...(updateData.plan && { plan: updateData.plan }),
+      }
     })
 
     return NextResponse.json({ success: true, updated })

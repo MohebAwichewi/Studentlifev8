@@ -50,6 +50,22 @@ export async function POST(req: Request) {
             if (used) return NextResponse.json({ error: "This offer has already been used." }, { status: 400 })
         }
 
+        // ✅ 4.5 STOCK CHECK & DECREMENT
+        if (deal.isSoldOut || (deal.stock !== -1 && deal.stock <= 0)) {
+            return NextResponse.json({ error: "This deal is sold out!" }, { status: 400 })
+        }
+
+        // Decrement Stock (if not infinite) and Update SoldOut status
+        if (deal.stock !== -1) {
+            await prisma.deal.update({
+                where: { id: deal.id },
+                data: {
+                    stock: { decrement: 1 },
+                    isSoldOut: deal.stock - 1 <= 0 // Mark as sold out if we just took the last one
+                }
+            })
+        }
+
         // 5. LOG REDEMPTION
         const redemption = await prisma.redemption.create({
             data: {

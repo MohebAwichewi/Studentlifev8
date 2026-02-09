@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Deal" ADD COLUMN     "isUrgent" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "isMultiUse" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "redemptionType" TEXT NOT NULL DEFAULT 'SWIPE';

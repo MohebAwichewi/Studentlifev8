@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
   try {
@@ -43,8 +41,21 @@ export async function POST(req: Request) {
 
     // 4. FETCH ALL ACTIVE DEALS (Raw Data)
     const rawDeals = await prisma.deal.findMany({
-      where: { status: 'ACTIVE' },
-      include: { business: true }
+      where: { status: { in: ['APPROVED', 'ACTIVE'] } },
+      take: 10, // ✅ Strict limit for Vercel Free Tier (Payload < 4.5MB)
+      include: {
+        business: {
+          select: {
+            id: true,
+            businessName: true,
+            category: true,
+            city: true,
+            // logo: true, // ❌ REMOVED: Causing 500 Payload Error
+            latitude: true,
+            longitude: true
+          }
+        }
+      }
     })
 
     // 5. 🚀 THE RELEVANCE ENGINE (Real Scoring Logic)
@@ -60,7 +71,8 @@ export async function POST(req: Request) {
 
       // RULE B: Location Match (+15 Points)
       // If the business is in the same city as the student's university, boost it.
-      if (deal.business.city && deal.business.city.toLowerCase().includes(studentCity.toLowerCase())) {
+      const businessCity = deal.business.city || ""
+      if (businessCity.toLowerCase().includes(studentCity.toLowerCase())) {
         score += 15
       }
 

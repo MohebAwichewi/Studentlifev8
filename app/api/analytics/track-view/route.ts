@@ -28,6 +28,6 @@ export async function POST(req: Request) {
     // We don't return 500 to the client to avoid blocking the UI 
     // if analytics fail, but we log it internally.
     console.error("Analytics Error:", error)
-    return NextResponse.json({ success: false }) 
+    return NextResponse.json({ success: false })
   }
 }

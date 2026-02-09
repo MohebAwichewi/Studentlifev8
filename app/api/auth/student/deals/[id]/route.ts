@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // ✅ FIX: Type 'params' as a Promise
 export async function GET(
@@ -25,7 +23,11 @@ export async function GET(
             businessName: true,
             logo: true,
             category: true,
-            locations: true 
+            locations: true,
+            latitude: true,      // ✅ Added
+            longitude: true,     // ✅ Added
+            googleMapsUrl: true, // ✅ Added
+            googleMapEmbed: true // ✅ Added for Embed Map Support 
           }
         }
       }

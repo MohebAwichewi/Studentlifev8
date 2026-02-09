@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import Script from 'next/script'
 
 // --- TYPES ---
@@ -105,7 +106,8 @@ function DashboardContent() {
         phone: '',
         website: '',
         address: '',
-        googleMapsUrl: '', // ✅ New Field
+        googleMapsUrl: '',
+        googleMapEmbed: '', // ✅ New Field
         description: '',
         logo: '',
         banner: ''
@@ -177,7 +179,7 @@ function DashboardContent() {
             };
 
             // 1. My Deals
-            safeFetch('/api/auth/deals/my-deals', { email: email }).then(data => {
+            safeFetch('/api/auth/deals/my-deals', { businessId: id }).then(data => {
                 if (data && data.success) setDeals(data.deals)
             });
 
@@ -194,10 +196,11 @@ function DashboardContent() {
                         phone: data.phone || '',
                         website: data.website || '',
                         address: data.address || '',
-                        googleMapsUrl: data.googleMapsUrl || '', // ✅ Load Google Maps URL
+                        googleMapsUrl: data.googleMapsUrl || '',
+                        googleMapEmbed: data.googleMapEmbed || '', // ✅ Load Embed Code
                         description: data.description || '',
                         logo: data.logo || '',
-                        banner: data.banner || ''
+                        banner: data.banner || data.coverImage || '' // ✅ Fix: Map coverImage to banner
                     })
                     if (data.email) setBusinessEmail(data.email)
 
@@ -233,25 +236,52 @@ function DashboardContent() {
         router.push('/business/login')
     }
 
-    const handleProfileImageChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner') => {
+    // ✅ HELPER: Compress Image to reduce Payload Size
+    const compressImage = (file: File): Promise<string> => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target?.result as string;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 800; // Resize to max width 800px
+                    const scaleSize = MAX_WIDTH / img.width;
+                    canvas.width = MAX_WIDTH;
+                    canvas.height = img.height * scaleSize;
+
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    // Compress to JPEG with 0.7 quality
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                }
+            }
+        })
+    }
+
+    const handleProfileImageChange = async (e: React.ChangeEvent<HTMLInputElement>, type: 'logo' | 'banner') => {
         const file = e.target.files?.[0]
         if (file) {
-            const reader = new FileReader()
-            reader.onloadend = () => {
-                setProfileForm(prev => ({ ...prev, [type]: reader.result as string }))
+            try {
+                const compressed = await compressImage(file);
+                setProfileForm(prev => ({ ...prev, [type]: compressed }))
+            } catch (err) {
+                console.error("Image processing failed", err)
             }
-            reader.readAsDataURL(file)
         }
     }
 
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (file) {
-            const reader = new FileReader()
-            reader.onloadend = () => {
-                setDealForm({ ...dealForm, image: reader.result as string })
+            try {
+                const compressed = await compressImage(file);
+                setDealForm({ ...dealForm, image: compressed })
+            } catch (err) {
+                console.error("Image processing failed", err)
             }
-            reader.readAsDataURL(file)
         }
     }
 
@@ -523,7 +553,14 @@ function DashboardContent() {
                                                     {deal.status === 'REJECTED' && <span className="inline-flex items-center gap-1 bg-red-100 text-red-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide"><i className="fa-solid fa-xmark"></i> Rejected</span>}
                                                     {deal.status === 'PENDING' && <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide"><i className="fa-solid fa-clock"></i> Pending</span>}
                                                 </td>
-                                                <td className="px-6 py-4 text-right"><button onClick={() => handleDeleteDeal(deal.id)} className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-red-500 transition flex items-center justify-center"><i className="fa-solid fa-trash"></i></button></td>
+                                                <td className="px-6 py-4 text-right pt-6 flex justify-end gap-2">
+                                                    <Link href={`/business/edit-deal/${deal.id}`} className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-blue-500 transition flex items-center justify-center" title="Edit Deal">
+                                                        <i className="fa-solid fa-pen"></i>
+                                                    </Link>
+                                                    <button onClick={() => handleDeleteDeal(deal.id)} className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-red-500 transition flex items-center justify-center" title="Delete Deal">
+                                                        <i className="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -645,6 +682,11 @@ function DashboardContent() {
                                     </div>
 
                                     <div>
+                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">About</label>
+                                        <textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-900 focus:outline-none focus:border-[#0F392B] resize-none h-24" placeholder="Tell students about your business..." value={profileForm.description} onChange={(e) => setProfileForm({ ...profileForm, description: e.target.value })} />
+                                    </div>
+
+                                    <div>
                                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">Location & Web</label>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {/* ✅ GOOGLE MAPS INPUT */}
@@ -653,11 +695,18 @@ function DashboardContent() {
                                             <input type="text" placeholder="Website URL" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 focus:outline-none focus:border-[#0F392B] transition" value={profileForm.website} onChange={(e) => setProfileForm({ ...profileForm, website: e.target.value })} />
                                         </div>
                                         <input type="text" placeholder="Address (Street, City, Postcode)" className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-900 focus:outline-none focus:border-[#0F392B] transition mt-4" value={profileForm.address} onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })} />
-                                    </div>
 
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">About</label>
-                                        <textarea className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-slate-900 focus:outline-none focus:border-[#0F392B] resize-none h-24" placeholder="Tell students about your business..." value={profileForm.description} onChange={(e) => setProfileForm({ ...profileForm, description: e.target.value })} />
+                                        {/* ✅ EMBED MAP CODE INPUT */}
+                                        <div className="mt-4">
+                                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 ml-1">Google Maps Embed Code (Optional)</label>
+                                            <textarea
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-medium text-xs font-mono text-slate-600 focus:outline-none focus:border-[#0F392B] resize-none h-20"
+                                                placeholder='<iframe src="https://www.google.com/maps/embed?..."></iframe>'
+                                                value={profileForm.googleMapEmbed}
+                                                onChange={(e) => setProfileForm({ ...profileForm, googleMapEmbed: e.target.value })}
+                                            />
+                                            <p className="text-[10px] text-slate-400 mt-1 ml-1">Paste the full iframe code from Google Maps (Share {'>'} Embed a map).</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

@@ -13,6 +13,7 @@ datasource db {
 //                          MODELS
 // ---------------------------------------------------------
 
+
 // 1. STUDENTS (Users)
 model Student {
   id         String   @id @default(uuid())
@@ -24,12 +25,19 @@ model Student {
   hometown   String
   otp        String?
   isVerified Boolean  @default(false)
+  
+  // ID Verification
+  idCardUrl      String?
+  profilePicture String?
 
   // Relations
-  redemptions Redemption[]
-  savedDeals  SavedDeal[]
-  // Optional: Link vouchers to student if needed for history
-  // vouchers    Voucher[] 
+  // Output - Relations
+  redemptions   Redemption[]
+  savedDeals    SavedDeal[]
+  notifications Notification[]
+  
+  // Gamification
+  hasSpunWheel  Boolean @default(false)
 
   createdAt DateTime @default(now())
 }
@@ -43,7 +51,7 @@ model Business {
   // Basic Info
   businessName String
   viewCount    Int      @default(0)
-  city         String   @default("Tunis")
+  city         String   @default("London")
   description  String?  @db.Text
   logo         String?
   coverImage   String?
@@ -55,6 +63,9 @@ model Business {
   
   // ✅ NEW: Google Maps Link
   googleMapsUrl String?
+
+  // ✅ NEW: Google Maps Embed Code
+  googleMapEmbed String? @db.Text
 
   // ✅ NEW: Stripe Subscription Fields
   stripeCustomerId     String?
@@ -111,22 +122,32 @@ model Deal {
   
   status          String  @default("PENDING") // PENDING, ACTIVE, REJECTED
   views           Int     @default(0) // ✅ Added Views Field
+  clicks          Int     @default(0) // ✅ Real Clicks Tracking
   claimed         Int     @default(0) // ✅ Added Claimed Field
   priorityScore   Int     @default(0)
   rejectionReason String? @db.Text
   
   // ✅ NEW FIELDS REQUESTED
   isMultiUse      Boolean   @default(false)
-  redemptionType  String    @default("SWIPE") // 'SWIPE', 'CODE', etc.
+  isUrgent        Boolean   @default(false) // ✅ NEW: Urgent Feature
+  redemptionType  String    @default("SWIPE") // 'SWIPE', 'CODE', 'LINK'
+  redemptionLink  String?   // ✅ NEW: Online Redemption Link
+  
+  // ✅ Inventory Management
+  stock           Int       @default(10) // Default stock
+  isSoldOut       Boolean   @default(false)
 
   // Relations
   businessId  String
-  business    Business      @relation(fields: [businessId], references: [id])
+  business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   savedBy     SavedDeal[]
   redemptions Redemption[]
   
   // Voucher Relation
   vouchers    Voucher[]
+  
+  // Gamification
+  spinPrizes  SpinPrize[]
 
   createdAt DateTime @default(now())
 }
@@ -140,7 +161,7 @@ model PushRequest {
   targetRadius Int       @default(0)
   filters      String?   @db.Text
   businessId   String?
-  business     Business? @relation(fields: [businessId], references: [id])
+  business     Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
   createdAt    DateTime  @default(now())
   sentAt       DateTime?
 }
@@ -153,7 +174,7 @@ model Location {
   lat        Float
   lng        Float
   businessId String
-  business   Business @relation(fields: [businessId], references: [id])
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
 // 6. SUPPORT TICKETS
@@ -164,14 +185,14 @@ model Ticket {
   status     String    @default("OPEN")
   createdAt  DateTime  @default(now())
   businessId String
-  business   Business  @relation(fields: [businessId], references: [id])
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
 }
 
 // 7. UNIVERSITIES
 model University {
   id        Int      @id @default(autoincrement())
   name      String
-  region    String   @default("Tunis")
+  region    String   @default("London")
   latitude  Float
   longitude Float
   campuses  Campus[]
@@ -225,7 +246,7 @@ model Redemption {
 
   // Relations
   student   Student  @relation(fields: [studentId], references: [id])
-  deal      Deal     @relation(fields: [dealId], references: [id])
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
 }
 
 // 11. SAVED DEALS
@@ -234,7 +255,7 @@ model SavedDeal {
   studentId String
   student   Student  @relation(fields: [studentId], references: [id])
   dealId    Int
-  deal      Deal     @relation(fields: [dealId], references: [id])
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
   savedAt   DateTime @default(now())
 
   @@unique([studentId, dealId])
@@ -262,7 +283,39 @@ model Voucher {
   studentId String
   // Relation to Deal (Int ID)
   dealId    Int
-  deal      Deal     @relation(fields: [dealId], references: [id])
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
   
+  createdAt DateTime @default(now())
+}
+
+// 14. SPIN THE WHEEL & GAMIFICATION
+model SpinPrize {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   @default("LOSE") // WIN, LOSE, TRY_AGAIN
+  weight    Int      @default(1)
+  quantity  Int      @default(0) // Remaining stock
+  
+  // Linked Deal (if type == WIN)
+  dealId    Int?
+  deal      Deal?    @relation(fields: [dealId], references: [id])
+  
+  wins      Int      @default(0) // Total times won
+  createdAt DateTime @default(now())
+}
+
+// 15. NOTIFICATIONS
+model Notification {
+  id        String   @id @default(cuid())
+  
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  
+  title     String
+  message   String
+  type      String   @default("SYSTEM") // DEAL, SYSTEM, WIN
+  dealId    Int?     // Link to deal if applicable
+  
+  isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 }

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
   try {
@@ -25,7 +23,7 @@ export async function POST(req: Request) {
     // 2. Find Deal (Handle ID as Number)
     const dealIdInt = Number(dealId)
     if (isNaN(dealIdInt)) {
-        return NextResponse.json({ error: "Invalid Deal ID format" }, { status: 400 })
+      return NextResponse.json({ error: "Invalid Deal ID format" }, { status: 400 })
     }
 
     const deal = await prisma.deal.findUnique({
@@ -45,10 +43,10 @@ export async function POST(req: Request) {
     })
 
     if (existingVoucher) {
-      return NextResponse.json({ 
-        success: true, 
-        code: existingVoucher.code, 
-        message: "Code retrieved" 
+      return NextResponse.json({
+        success: true,
+        code: existingVoucher.code,
+        message: "Code retrieved"
       })
     }
 
@@ -57,7 +55,7 @@ export async function POST(req: Request) {
     const dealPart = deal.id.toString().padStart(3, '0') // e.g. "005"
     const studentPart = student.id.substring(0, 2).toUpperCase() // e.g. "JO"
     const randomPart = Math.random().toString(36).substring(2, 6).toUpperCase() // e.g. "X9Y1"
-    
+
     const uniqueCode = `SL-${dealPart}-${studentPart}-${randomPart}`
 
     // 5. Save to Database
@@ -70,9 +68,9 @@ export async function POST(req: Request) {
       }
     })
 
-    return NextResponse.json({ 
-      success: true, 
-      code: voucher.code 
+    return NextResponse.json({
+      success: true,
+      code: voucher.code
     })
 
   } catch (error: any) {

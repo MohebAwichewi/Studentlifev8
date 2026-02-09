@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 export async function GET(req: Request) {
   try {
     // ⚠️ Security Note: In a production app, verify the Admin session/token here!
-    
+
     // Fetch all businesses, sorted by newest first
     const partners = await prisma.business.findMany({
       select: {

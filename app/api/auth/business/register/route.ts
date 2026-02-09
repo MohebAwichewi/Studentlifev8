@@ -7,7 +7,7 @@ const prisma = new PrismaClient()
 export async function POST(req: Request) {
   try {
     const body = await req.json()
-    const { email, password, businessName, address, phone, city, postcode, placeId, contactName } = body
+    const { email, password, businessName, address, phone, city, postcode, placeId, contactName, latitude, longitude } = body
 
     // 1. Check if user already exists
     const existingUser = await prisma.business.findUnique({
@@ -15,11 +15,9 @@ export async function POST(req: Request) {
     })
 
     if (existingUser) {
-      // If account exists AND has a password, it's a real account -> Error
       if (existingUser.password && existingUser.password.length > 10) {
         return NextResponse.json({ error: "Email already in use" }, { status: 400 })
       }
-      // Otherwise, it's a placeholder from 'send-otp', so we PROCEED to update it.
     }
 
     // 2. Hash Password
@@ -28,7 +26,7 @@ export async function POST(req: Request) {
     // 3. Calculate Trial End Date (Real 3 Months from Now)
     const startDate = new Date()
     const trialEndDate = new Date(startDate)
-    trialEndDate.setMonth(startDate.getMonth() + 3) // Adds exactly 3 months
+    trialEndDate.setMonth(startDate.getMonth() + 3)
 
     // 4. Create or Update Business
     const business = await prisma.business.upsert({
@@ -40,9 +38,19 @@ export async function POST(req: Request) {
         city,
         phone,
         placeId,
+        latitude: latitude || 0,
+        longitude: longitude || 0,
         trialEndsAt: trialEndDate,
         isSubscribed: false,
-        status: 'ACTIVE' // Activate the account
+        status: 'ACTIVE',
+        locations: {
+          create: {
+            name: "Main Branch",
+            address: `${address}, ${city} ${postcode}`,
+            lat: latitude || 0,
+            lng: longitude || 0
+          }
+        }
       },
       create: {
         email,
@@ -52,8 +60,18 @@ export async function POST(req: Request) {
         city,
         phone,
         placeId,
+        latitude: latitude || 0,
+        longitude: longitude || 0,
         trialEndsAt: trialEndDate,
-        isSubscribed: false
+        isSubscribed: false,
+        locations: {
+          create: {
+            name: "Main Branch",
+            address: `${address}, ${city} ${postcode}`,
+            lat: latitude || 0,
+            lng: longitude || 0
+          }
+        }
       }
     })
 

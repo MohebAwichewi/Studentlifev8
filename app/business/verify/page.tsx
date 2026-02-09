@@ -5,18 +5,39 @@ import Link from 'next/link'
 import { Scanner } from '@yudiel/react-qr-scanner' // ✅ NEW: Modern Scanner
 
 export default function BusinessVerify() {
-   // MOCK BUSINESS ID: In a real app, get this from the logged-in session
-   const BUSINESS_ID = "clq2..."
-
    const [activeTab, setActiveTab] = useState<'SCAN' | 'MANUAL'>('SCAN')
    const [manualInput, setManualInput] = useState('')
    const [loading, setLoading] = useState(false)
    const [scanResult, setScanResult] = useState<any>(null)
    const [error, setError] = useState('')
    const [cameraOn, setCameraOn] = useState(true)
+   const [businessId, setBusinessId] = useState<string | null>(null)
+
+   // Fetch Session/Business ID on Mount
+   React.useEffect(() => {
+      const fetchProfile = async () => {
+         try {
+            const res = await fetch('/api/auth/business/profile')
+            const data = await res.json()
+            if (data.success && data.business?.id) {
+               setBusinessId(data.business.id)
+            } else {
+               setError("Session Expired. Please Login.")
+            }
+         } catch (e) {
+            setError("Failed to load business profile.")
+         }
+      }
+      fetchProfile()
+   }, [])
 
    // --- HANDLER: Process the ID (Scanned or Typed) ---
    const handleVerification = async (studentId: string) => {
+      if (!businessId) {
+         setError("Business Not Identified. Refresh page.")
+         return
+      }
+
       setLoading(true)
       setError('')
       setCameraOn(false) // Pause camera while processing
@@ -27,7 +48,7 @@ export default function BusinessVerify() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                studentId: studentId,
-               businessId: BUSINESS_ID
+               businessId: businessId
             })
          })
 

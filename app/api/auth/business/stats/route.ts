@@ -12,12 +12,12 @@ export async function POST(req: Request) {
     // Aggregate real data
     const deals = await prisma.deal.findMany({
       where: { businessId: businessId },
-      select: { views: true, claimed: true }
+      select: { views: true, claimed: true, clicks: true }
     })
 
     const reach = deals.reduce((acc, d) => acc + (d.views || 0), 0)
     const redemptions = deals.reduce((acc, d) => acc + (d.claimed || 0), 0)
-    const clicks = Math.round(reach * 0.12) // Approximate clicks if not tracked directly
+    const clicks = deals.reduce((acc, d) => acc + (d.clicks || 0), 0)
 
     return NextResponse.json({
       success: true,

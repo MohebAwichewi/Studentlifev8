@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import nodemailer from 'nodemailer'
+import { Resend } from 'resend';
 
 const prisma = new PrismaClient()
+const resend = new Resend('re_VMjQDLk9_7DzcovXwZs4vR35cijz2t7kq');
 
 export async function POST(req: Request) {
   console.log("🚀 [API] /send-otp started...")
@@ -36,44 +37,12 @@ export async function POST(req: Request) {
       }
     });
 
-    // 3. Send Email
-    // Since you are on Vercel, ensure SMTP_HOST points to the IP or correct hostname of your cPanel server
-    console.log("📧 [API] Configuring SMTP Transporter...");
+    // 3. Send Email via Resend
+    console.log(`📧 [API] Sending email to ${email} via Resend...`);
 
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 465,
-      secure: true, // Use true for port 465, false for 587
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      tls: {
-        rejectUnauthorized: false // Fixes some certificate errors
-      },
-      connectionTimeout: 10000, // 10 seconds timeout
-      greetingTimeout: 5000,
-      socketTimeout: 10000,
-    });
-
-    // Verify connection first (Debugging Step)
-    await new Promise((resolve, reject) => {
-      transporter.verify(function (error, success) {
-        if (error) {
-          console.error("❌ [API] SMTP Connection Check Failed:", error);
-          reject(error);
-        } else {
-          console.log("✅ [API] SMTP Server is ready to take our messages");
-          resolve(success);
-        }
-      });
-    });
-
-    console.log(`📧 [API] Sending email to ${email}...`);
-
-    await transporter.sendMail({
-      from: `"Student.LIFE Security" <${process.env.SMTP_USER}>`,
-      to: email,
+    const { data, error } = await resend.emails.send({
+      from: 'otp@student-life.uk',
+      to: [email],
       subject: 'Partner Verification Code',
       text: `Your Student.LIFE verification code is: ${otp}. Please enter this code to verify your account. If you did not request this, please ignore this email.`,
       html: `
@@ -89,11 +58,16 @@ export async function POST(req: Request) {
       `
     });
 
-    console.log("✅ [API] Email SENT successfully");
+    if (error) {
+      console.error("❌ [API] Resend Error:", error);
+      return NextResponse.json({ error: "Failed to send email via Resend." }, { status: 500 });
+    }
+
+    console.log("✅ [API] Email SENT successfully:", data);
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
     console.error("❌ [API] SERVER ERROR:", error);
-    return NextResponse.json({ error: "Failed to send email. Check SMTP settings." }, { status: 500 });
+    return NextResponse.json({ error: "Failed to send email. Check Server Logs." }, { status: 500 });
   }
 }

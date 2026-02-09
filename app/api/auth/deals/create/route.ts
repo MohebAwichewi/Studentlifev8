@@ -32,8 +32,7 @@ export async function POST(req: Request) {
         }
 
         // 3. Create Deal
-        // ⚠️ Ensure 'redemptionType' and 'isMultiUse' are in your schema.prisma
-        // If not, remove those lines to prevent 500 errors.
+        // Deals start as PENDING and require admin approval
         const deal = await prisma.deal.create({
             data: {
                 title,
@@ -42,11 +41,12 @@ export async function POST(req: Request) {
                 expiry: validExpiry,
                 image: image || "",
                 category: category || "General",
-                status: 'PENDING', // ✅ Enforce Admin Approval
+                status: 'PENDING', // ✅ Requires admin approval
                 views: 0,
                 claimed: 0,
                 isMultiUse: isMultiUse || false,
-                redemptionType: redemptionType || 'SWIPE_SINGLE',
+                isUrgent: false, // Default to false for now, or add to body destructuring if needed
+                redemptionType: redemptionType || 'SWIPE',
                 business: {
                     connect: { id: businessId }
                 }

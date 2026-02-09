@@ -32,6 +32,7 @@ export default function BusinessLogin() {
         localStorage.setItem('isBusinessLoggedIn', 'true')
         localStorage.setItem('businessId', data.businessId)
         localStorage.setItem('businessName', data.businessName)
+        localStorage.setItem('businessEmail', formData.email) // ✅ Save Email
 
         router.push('/business/dashboard') // 🚀 Go to Dashboard
       } else {

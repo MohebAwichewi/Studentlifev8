@@ -28,6 +28,7 @@ export default function StudentLogin() {
 
          if (res.ok) {
             localStorage.setItem('studentEmail', data.email || formData.email)
+            localStorage.setItem('authToken', data.token) // ✅ Critical: Save Token for Auth checks
             setTimeout(() => {
                // ✅ Redirect to Student Home
                router.push('/student/home')

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // ✅ FIX: Type 'params' as a Promise
 export async function GET(
@@ -30,6 +28,8 @@ export async function GET(
 
     // 2. Remove sensitive data before sending to frontend
     const { password, stripeCustomerId, stripeSubscriptionId, ...publicProfile } = business
+
+    return NextResponse.json({ success: true, business: publicProfile })
 
     return NextResponse.json({ success: true, business: publicProfile })
 

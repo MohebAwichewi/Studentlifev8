@@ -723,3 +723,27 @@ footer {
     transform: rotateY(180deg);
   }
 }
+
+/* --- GOOGLE MAPS AUTOCOMPLETE FIX --- */
+.pac-container {
+    z-index: 10000 !important;
+    border-radius: 12px;
+    margin-top: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    border: none;
+    font-family: 'Inter', sans-serif;
+}
+.pac-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #64748b;
+}
+.pac-item:hover {
+    background-color: #f8fafc;
+}
+.pac-item-query {
+    font-size: 0.9rem;
+    color: #0f172a;
+    font-weight: 700;
+} 

@@ -14,6 +14,7 @@ export async function POST(req: Request) {
     // --- REAL USER LOGIC STARTS HERE ---
 
     // 2. Generate a random 6-digit code
+    // 2. Generate a random 6-digit code
     const otp = Math.floor(100000 + Math.random() * 900000).toString()
 
     // 3. Set expiry (10 minutes from now)

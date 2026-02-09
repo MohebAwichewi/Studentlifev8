@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 
-const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
   try {
@@ -15,17 +14,21 @@ export async function POST(req: Request) {
 
     // Logic to handle different actions
     if (action === 'APPROVE') {
-        updateData = { status: 'ACTIVE', rejectionReason: null } 
+      updateData = { status: 'ACTIVE', rejectionReason: null }
     } else if (action === 'BAN') {
-        updateData = { status: 'BANNED' }
+      updateData = { status: 'BANNED' }
     } else if (action === 'REJECT') {
-        updateData = { status: 'REJECTED', rejectionReason: reason } 
+      updateData = { status: 'REJECTED', rejectionReason: reason }
+    } else if (action === 'DELETE') {
+      // Permanent Delete (Trash Icon)
+      await prisma.business.delete({ where: { id } })
+      return NextResponse.json({ success: true, deleted: true })
     } else {
-        return NextResponse.json({ error: "Invalid Action" }, { status: 400 })
+      return NextResponse.json({ error: "Invalid Action" }, { status: 400 })
     }
 
     const updated = await prisma.business.update({
-      where: { id: id }, 
+      where: { id: id },
       data: updateData
     })
 

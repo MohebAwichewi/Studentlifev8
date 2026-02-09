@@ -1,20 +1,9 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import nodemailer from 'nodemailer'
+import { prisma } from '@/lib/prisma'
+import { Resend } from 'resend';
 import crypto from 'crypto'
 
-const prisma = new PrismaClient()
-
-// Email Transporter (Reusing existing config from send-otp)
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-})
+const resend = new Resend('re_VMjQDLk9_7DzcovXwZs4vR35cijz2t7kq');
 
 export async function POST(req: Request) {
     try {
@@ -46,13 +35,10 @@ export async function POST(req: Request) {
             where: {
                 identifier_token: {
                     identifier: email,
-                    token: token // This is technically unique constraint, but we want to clear old ones ideally. 
-                    // However, standard NextAuth VerificationToken table is usually insert-only or specific cleanup.
-                    // We'll just create a new one. Upsert requires unique combo.
-                    // Actually, let's delete old ones first to keep it clean.
+                    token: token
                 }
             },
-            update: { expires }, // Fallback, won't happen if we use random token
+            update: { expires },
             create: {
                 identifier: email,
                 token,
@@ -60,16 +46,12 @@ export async function POST(req: Request) {
             }
         })
 
-        // Better approach: Clean old unique tokens for this email if possible, or just create.
-        // Since default unique is [identifier, token], we can have multiple tokens per email.
-        // That's fine.
-
-        // 4. Send Email
+        // 4. Send Email via Resend
         const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${userType.toLowerCase()}/reset-password?token=${token}`
 
-        await transporter.sendMail({
-            from: `"Student.LIFE Security" <${process.env.SMTP_USER}>`,
-            to: email,
+        const { data, error } = await resend.emails.send({
+            from: 'otp@student-life.uk',
+            to: [email],
             subject: 'Reset Your Password',
             text: `Reset your password by visiting this link: ${resetUrl}`,
             html: `
@@ -82,7 +64,12 @@ export async function POST(req: Request) {
           <p style="color: #888; font-size: 12px; text-align: center;">Link valid for 1 hour. If you didn't request this, please ignore.</p>
         </div>
       `
-        })
+        });
+
+        if (error) {
+            console.error("Forgot Password Resend Error:", error);
+            // Don't leak error to client for security, but log it
+        }
 
         return NextResponse.json({ message: "If account exists, email sent." })
 
@@ -91,3 +78,4 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Server Error" }, { status: 500 })
     }
 }
+

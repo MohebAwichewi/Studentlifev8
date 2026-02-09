@@ -4,17 +4,11 @@ import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Script from 'next/script'
 import { useRouter } from 'next/navigation'
-import { loadStripe } from '@stripe/stripe-js'
-import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js'
-
-// Initialize Stripe outside component to avoid recreation
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY!)
 
 export default function BusinessSignup() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  // Expanded step type definition to include Stripe step (6)
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1)
 
   // --- GOOGLE MAPS STATE ---
   const [scriptLoaded, setScriptLoaded] = useState(false)
@@ -34,47 +28,72 @@ export default function BusinessSignup() {
     role: 'Owner',
     email: '',
     otp: '',
-    password: ''
+    password: '',
+    latitude: 0,
+    longitude: 0
   })
 
-  const [clientSecret, setClientSecret] = useState('')
+  // OTP State
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [otpSent, setOtpSent] = useState(false)
-  const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('month')
 
-  const toggleBilling = (interval: 'month' | 'year') => {
-    setBillingInterval(interval)
-  }
-
-  // --- 1. GOOGLE MAPS INIT ---
-  useEffect(() => {
-    // Wait for the script and checks if the 'places' library is available
-    if (!isManualEntry && scriptLoaded && searchInputRef.current && window.google && window.google.maps && window.google.maps.places) {
-
-      try {
-        const autocomplete = new window.google.maps.places.Autocomplete(searchInputRef.current, {
-          types: ['establishment'],
-          fields: ['name', 'formatted_address', 'place_id'],
-          componentRestrictions: { country: 'gb' }
-        })
-
-        autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace()
-          if (place.name && place.formatted_address) {
-            setFormData(prev => ({
-              ...prev,
-              businessName: place.name || '',
-              address: place.formatted_address || '',
-              placeId: place.place_id || ''
-            }))
-            setTimeout(() => setStep(2), 500)
-          }
-        })
-      } catch (err) {
-        console.error("Maps Autocomplete Error:", err);
+  // Declare custom element to avoid TS errors
+  // (You can also move this to a types.d.ts file, but here is fine for now)
+  // @ts-ignore
+  declare global {
+    namespace JSX {
+      interface IntrinsicElements {
+        'gmp-place-autocomplete': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+          placeholder?: string;
+        };
       }
     }
-  }, [scriptLoaded, step, isManualEntry])
+  }
+
+  // --- 1. GOOGLE MAPS INIT (WEB COMPONENT) ---
+  useEffect(() => {
+    if (!isManualEntry && searchInputRef.current) {
+      const el = searchInputRef.current as any;
+
+      // ✅ FIX: Explicitly request fields to avoid "Property not available" error
+      // The new Google Maps Places Library throws if you access a field you didn't ask for.
+      el.fields = ['displayName', 'formattedAddress', 'location', 'id', 'addressComponents'];
+
+      const onPlaceSelect = async (event: any) => {
+        const place = event.detail.getPlace();
+
+        if (place) {
+          // Use new API fields (displayName, etc.) since we requested them
+          const name = place.displayName || place.name || '';
+          const address = place.formattedAddress || place.formatted_address || '';
+          const placeId = place.id || place.place_id || '';
+
+          let lat = 0;
+          let lng = 0;
+
+          if (place.location) {
+            lat = place.location.lat();
+            lng = place.location.lng();
+          }
+
+          setFormData(prev => ({
+            ...prev,
+            businessName: name,
+            address: address,
+            placeId: placeId,
+            latitude: lat,
+            longitude: lng
+          }));
+          setTimeout(() => setStep(2), 500);
+        }
+      };
+
+      el.addEventListener('gmp-places-select', onPlaceSelect);
+      return () => {
+        el.removeEventListener('gmp-places-select', onPlaceSelect);
+      };
+    }
+  }, [step, isManualEntry]);
 
   // --- ACTIONS ---
 
@@ -93,11 +112,52 @@ export default function BusinessSignup() {
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    // Append city/postcode to address if not present
-    if (formData.city && !formData.address.includes(formData.city)) {
-      setFormData(prev => ({ ...prev, address: `${prev.address}, ${prev.city} ${prev.postcode}` }))
+
+    // 1. Construct Full Address
+    let fullAddress = formData.address
+    if (formData.city && !fullAddress.toLowerCase().includes(formData.city.toLowerCase())) {
+      fullAddress += `, ${formData.city}`
     }
-    setStep(2)
+    if (formData.postcode && !fullAddress.toLowerCase().includes(formData.postcode.toLowerCase())) {
+      fullAddress += `, ${formData.postcode}`
+    }
+
+    // 2. Geocode Address to get Lat/Lng
+    if (window.google && window.google.maps) {
+      const geocoder = new window.google.maps.Geocoder()
+      geocoder.geocode({ address: fullAddress }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const lat = results[0].geometry.location.lat()
+          const lng = results[0].geometry.location.lng()
+          const formattedAddress = results[0].formatted_address
+
+          console.log("📍 Geocoding Success:", lat, lng)
+
+          setFormData(prev => ({
+            ...prev,
+            address: formattedAddress, // Use the official formatted address
+            latitude: lat,
+            longitude: lng
+          }))
+        } else {
+          console.error("Geocode failed: " + status)
+          // Fallback: Just save the text address, coordinates will remain 0
+          setFormData(prev => ({
+            ...prev,
+            address: fullAddress
+          }))
+        }
+        // 3. Move to next step regardless of geocode success
+        setStep(2)
+      })
+    } else {
+      // Fallback if Google Maps API not loaded
+      setFormData(prev => ({
+        ...prev,
+        address: fullAddress
+      }))
+      setStep(2)
+    }
   }
 
   const handleDetailsSubmit = (e: React.FormEvent) => {
@@ -156,7 +216,7 @@ export default function BusinessSignup() {
     }
   }
 
-  // ✅ Create Account + Init Stripe
+  // ✅ Create Account (No Stripe)
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -171,10 +231,9 @@ export default function BusinessSignup() {
       const data = await res.json()
 
       if (res.ok) {
-        // 2. If registration success, get Stripe Secret (simulated here or fetched from API)
-        setStep(6)
-        // If you have a Stripe API, call it here to get clientSecret
-        // setClientSecret(data.clientSecret) 
+        // 2. Immediate Success - No Stripe
+        // Login Logic can be here, or redirect to login
+        router.push('/business/login?success=account_created')
       } else {
         alert(data.error)
       }
@@ -201,7 +260,7 @@ export default function BusinessSignup() {
     <div className="min-h-screen bg-white flex flex-col md:flex-row font-sans text-slate-900 selection:bg-black selection:text-white">
 
       <Script
-        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&libraries=places`}
+        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&libraries=places&loading=async`}
         onLoad={() => setScriptLoaded(true)}
         strategy="lazyOnload"
       />
@@ -227,7 +286,6 @@ export default function BusinessSignup() {
           <StepIndicator step={2} current={step} label="Review & Contact" />
           <StepIndicator step={3} current={step} label="Login Details" />
           <StepIndicator step={5} current={step} label="Create Password" />
-          <StepIndicator step={6} current={step} label="Start Free Trial" />
         </div>
       </div>
 
@@ -252,7 +310,10 @@ export default function BusinessSignup() {
               <div className="space-y-6">
                 <div className="relative">
                   <i className="fa-solid fa-magnifying-glass absolute left-4 top-4 text-slate-400 z-10"></i>
-                  <input ref={searchInputRef} type="text" placeholder="Search business name or address..." className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-4 font-bold focus:outline-none focus:border-black transition" />
+                  {/* @ts-ignore */}
+                  <gmp-place-autocomplete ref={searchInputRef} placeholder="Search business name or address..." types={['establishment', 'geocode']}>
+                    <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-4 font-bold focus:outline-none focus:border-black transition" />
+                  </gmp-place-autocomplete>
                 </div>
                 <button onClick={toggleManualMode} className="text-sm font-bold text-black hover:underline block mx-auto">
                   I can't find my store on the map
@@ -346,60 +407,8 @@ export default function BusinessSignup() {
           <form onSubmit={handleCreateAccount} className="animate-in fade-in slide-in-from-right-8 duration-500 space-y-6">
             <h2 className="text-3xl font-black mb-2 text-slate-900">Create Password</h2>
             <input required type="password" className={inputStyle} placeholder="••••••••" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} />
-            <button type="submit" disabled={loading} className={btnPrimary}>{loading ? "Creating Account..." : "Continue to Payment"}</button>
+            <button type="submit" disabled={loading} className={btnPrimary}>{loading ? "Creating Account..." : "Complete Signup"}</button>
           </form>
-        )}
-
-        {/* STEP 6: STRIPE (Only if clientSecret exists) */}
-        {step === 6 && (
-          <div className="animate-in fade-in slide-in-from-right-8 duration-500">
-            <h2 className="text-3xl font-black mb-2 text-slate-900">Start 3-Month Free Trial</h2>
-
-            {/* BILLING TOGGLE */}
-            <div className="bg-slate-100 p-1 rounded-xl flex mb-6">
-              <button
-                onClick={() => toggleBilling('month')}
-                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${billingInterval === 'month' ? 'bg-white shadow-sm text-black' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                Monthly (£10/mo)
-              </button>
-              <button
-                onClick={() => toggleBilling('year')}
-                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${billingInterval === 'year' ? 'bg-white shadow-sm text-black' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                Yearly (£100/yr) <span className="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-full ml-1">SAVE £20</span>
-              </button>
-            </div>
-
-            <div className="bg-[#F4F7FE] p-4 rounded-xl mb-6 border border-blue-100 flex items-center gap-3">
-              <div className="bg-blue-100 text-blue-600 w-10 h-10 rounded-full flex items-center justify-center shrink-0"><i className="fa-solid fa-shield-halved"></i></div>
-              <div className="text-sm text-blue-800">
-                <span className="font-bold block">£0.00 due today.</span>
-                First payment of <b>{billingInterval === 'month' ? '£10.00' : '£100.00'}</b> starts in 90 days. Cancel anytime.
-              </div>
-            </div>
-
-            {clientSecret ? (
-              <Elements stripe={stripePromise} options={{ clientSecret }}>
-                <PaymentForm />
-              </Elements>
-            ) : (
-              <div className="h-40 flex items-center justify-center">
-                <i className="fa-solid fa-circle-notch fa-spin text-3xl text-slate-200"></i>
-              </div>
-            )}
-
-          </div>
-        )}
-
-        {/* STEP 6 Fallback if no stripe secret (Manual Flow) */}
-        {step === 6 && !clientSecret && (
-          <div className="animate-in fade-in slide-in-from-right-8 text-center">
-            <div className="w-20 h-20 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-3xl mx-auto mb-6">🎉</div>
-            <h2 className="text-3xl font-bold mb-2">You're all set!</h2>
-            <p className="text-slate-500 mb-8">Account created successfully.</p>
-            <Link href="/business/login" className={btnPrimary}>Login to Dashboard</Link>
-          </div>
         )}
 
       </div>
@@ -414,39 +423,6 @@ const InputGroup = ({ label, placeholder, value, onChange, required }: any) => (
     <input required={required} type="text" placeholder={placeholder} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 font-bold text-slate-900 focus:outline-none focus:border-black transition" value={value} onChange={e => onChange && onChange(e.target.value)} />
   </div>
 )
-
-const PaymentForm = () => {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [msg, setMsg] = useState('');
-  const [proc, setProc] = useState(false);
-
-  const handleSubmit = async (e: any) => {
-    e.preventDefault();
-    if (!stripe || !elements) return;
-    setProc(true);
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: `${window.location.origin}/business/dashboard`
-      }
-    });
-
-    if (error) {
-      setMsg(error.message || 'Payment Failed');
-      setProc(false);
-    }
-  }
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <PaymentElement />
-      <button disabled={!stripe || proc} className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-slate-800 transition shadow-lg">{proc ? "Verifying..." : "Start Trial"}</button>
-      {msg && <div className="text-red-500 text-sm font-bold text-center">{msg}</div>}
-    </form>
-  )
-}
 
 const StepIndicator = ({ step, current, label }: any) => {
   const isCompleted = current > step;

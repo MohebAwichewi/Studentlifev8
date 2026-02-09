@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
 // 👇 FIX: Use the shared client. DO NOT use 'new PrismaClient()'
 import { prisma } from '@/lib/prisma'
 
@@ -28,19 +29,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Incorrect password." }, { status: 401 })
     }
 
-    // 3. Success (Kept your response format)
+    // 3. Success (Generate Token)
     const { password: _, ...studentProfile } = student
-    
-    return NextResponse.json({ 
-      success: true, 
-      email: student.email,
-      user: studentProfile 
+
+    const token = jwt.sign(
+      { id: student.id, email: student.email, role: 'student' },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '7d' }
+    );
+
+    return NextResponse.json({
+      success: true,
+      token,
+      user: studentProfile
     })
 
   } catch (error) {
     console.error("Student Login Error:", error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: "Server error",
       details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
     }, { status: 500 })

@@ -43,20 +43,41 @@ export async function POST(req: Request) {
     const nearbyDeals: any[] = []
 
     businesses.forEach((biz) => {
-      // Check each physical location of the business
+      // 1. Check Main Business Location
+      if (biz.latitude && biz.longitude) {
+        const distance = getDistanceFromLatLonInKm(lat, lng, biz.latitude, biz.longitude)
+        if (distance <= 15) {
+          biz.deals.forEach(deal => {
+            nearbyDeals.push({
+              ...deal,
+              distance: distance.toFixed(1) + ' km',
+              businessName: biz.businessName,
+              locationName: "Main Store", // Or biz.city
+              businessId: biz.id,
+              // Ensure logo is passed if needed, though deals usually include business relation
+              logo: biz.logo
+            })
+          })
+        }
+      }
+
+      // 2. Check Additional Branch Locations
       biz.locations.forEach((loc) => {
         const distance = getDistanceFromLatLonInKm(lat, lng, loc.lat, loc.lng)
 
         // If within 15km, add the deal to the list
         if (distance <= 15) {
           biz.deals.forEach(deal => {
+            // Avoid duplicates if main location and branch are same (unlikely but possible)
+            // For now, allow all valid locations
             nearbyDeals.push({
               ...deal,
               distance: distance.toFixed(1) + ' km', // Real calculated distance
               businessName: biz.businessName,
               locationName: loc.name,
               // Add businessId so the link works
-              businessId: biz.id
+              businessId: biz.id,
+              logo: biz.logo
             })
           })
         }

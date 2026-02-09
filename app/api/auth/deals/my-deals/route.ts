@@ -5,16 +5,18 @@ const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
   try {
-    const { email } = await req.json()
+    const { email, businessId } = await req.json()
 
-    if (!email) {
-      return NextResponse.json({ error: "Email missing" }, { status: 400 })
+    if (!email && !businessId) {
+      return NextResponse.json({ error: "Email or Business ID missing" }, { status: 400 })
     }
 
-    // 1. Find Business
-    const business = await prisma.business.findUnique({
-      where: { email }
-    })
+    let business;
+    if (businessId) {
+      business = await prisma.business.findUnique({ where: { id: businessId } })
+    } else {
+      business = await prisma.business.findUnique({ where: { email } })
+    }
 
     if (!business) {
       return NextResponse.json({ error: "Business not found" }, { status: 401 })

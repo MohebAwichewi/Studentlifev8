@@ -11,8 +11,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "Student.LIFE - Génération Économies",
-  description: "Moins de dépenses, Plus de vie.",
+  title: "Student.LIFE",
+  description: "Spend less, Live more.",
 };
 
 export default function RootLayout({
@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fr">
+    <html lang="en">
       <head>
         {/* FontAwesome CDN */}
         <link
