@@ -302,6 +302,7 @@ export default function MapScreen() {
                         {/* RADIUS CIRCLE (Native Map Component) */}
                         {filterLocation && (
                             <Circle
+                                key={`circle-${filterRadius}`} // Force re-render on Android to update radius
                                 center={filterLocation}
                                 radius={filterRadius * 1000} // km to meters
                                 strokeColor="rgba(230, 57, 70, 0.8)" // Red border
