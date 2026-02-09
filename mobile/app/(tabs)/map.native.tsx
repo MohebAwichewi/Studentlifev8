@@ -300,7 +300,7 @@ export default function MapScreen() {
                         ))}
 
                         {/* RADIUS CIRCLE (Native Map Component) */}
-                        {showFilterSheet && filterLocation && (
+                        {filterLocation && (
                             <Circle
                                 center={filterLocation}
                                 radius={filterRadius * 1000} // km to meters
