@@ -38,9 +38,42 @@ export async function GET(req: Request) {
             }
         });
 
+        // Fetch Active Vouchers (Prizes won but not used)
+        const activeVouchers = await prisma.voucher.findMany({
+            where: {
+                studentId: studentId,
+                isUsed: false,
+                // Optional: Check expiry? Or show expired ones too?
+                // User said "If they don't use it in 2 weeks, it must automatically say 'Expired'"
+                // So we should fetch them and let UI decide or filter out expired ones?
+                // Let's fetch all unused vouchers and handle display in UI (or filter here)
+                // Better to filter expired ones out of "Active" list, or show them as "Expired"
+                // For now, let's just get all unused ones.
+            },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            include: {
+                deal: {
+                    select: {
+                        id: true,
+                        title: true,
+                        image: true,
+                        business: {
+                            select: {
+                                businessName: true,
+                                logo: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
         return NextResponse.json({
             success: true,
-            redemptions
+            redemptions,
+            activeVouchers // ✅ Return Active Prizes
         });
 
     } catch (error) {

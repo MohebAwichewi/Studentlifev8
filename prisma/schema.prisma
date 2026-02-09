@@ -286,6 +286,7 @@ model Voucher {
   deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
   
   createdAt DateTime @default(now())
+  expiresAt DateTime? // ✅ 14-Day Expiry Rule
 }
 
 // 14. SPIN THE WHEEL & GAMIFICATION

@@ -97,14 +97,30 @@ export async function POST(req: Request) {
             });
 
             // F. Create Notification (Only if WIN)
-            if (prize.type === 'WIN') {
-                await tx.notification.create({
+            await tx.notification.create({
+                data: {
+                    studentId: studentId,
+                    title: 'Congratulations! You won!',
+                    message: `You won a ${prize.name}! Tap here to claim it.`,
+                    type: 'WIN',
+                    dealId: prize.dealId
+                }
+            });
+
+            // G. Create Voucher for the Prize (14 Day Expiry)
+            if (prize.dealId) {
+                const uniqueCode = `WIN-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substr(2, 4)}`.toUpperCase();
+                // 14 Days from now
+                const expiresAt = new Date();
+                expiresAt.setDate(expiresAt.getDate() + 14);
+
+                await tx.voucher.create({
                     data: {
+                        code: uniqueCode,
                         studentId: studentId,
-                        title: 'Congratulations! You won!',
-                        message: `You won a ${prize.name}! Tap here to claim it.`,
-                        type: 'WIN',
-                        dealId: prize.dealId
+                        dealId: prize.dealId,
+                        isUsed: false,
+                        expiresAt: expiresAt // ✅ Save Expiry
                     }
                 });
             }

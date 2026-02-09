@@ -11,20 +11,65 @@ export default function HistoryScreen() {
     const router = useRouter();
     const { user } = useAuth();
 
-    const { data: redemptions, isLoading, refetch } = useQuery({
+    const { data, isLoading, refetch } = useQuery({
         queryKey: ['history', user?.id],
         queryFn: async () => {
-            if (!user?.id) return [];
+            if (!user?.id) return { redemptions: [], activeVouchers: [] };
             try {
                 const res = await api.get(`/auth/student/redemptions?studentId=${user.id}`);
-                return res.data.success ? res.data.redemptions : [];
+                return res.data.success ? {
+                    redemptions: res.data.redemptions || [],
+                    activeVouchers: res.data.activeVouchers || []
+                } : { redemptions: [], activeVouchers: [] };
             } catch (e) {
-
-                return [];
+                return { redemptions: [], activeVouchers: [] };
             }
         },
         enabled: !!user?.id
     });
+
+    const activeVouchers = data?.activeVouchers || [];
+    const redemptions = data?.redemptions || [];
+
+    const renderVoucher = ({ item }: { item: any }) => {
+        const expiryDate = item.expiresAt ? new Date(item.expiresAt) : null;
+        const isExpired = expiryDate && expiryDate < new Date();
+
+        return (
+            <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => router.push(`/deal/${item.deal.id}`)}
+                className="bg-slate-900 p-4 rounded-2xl border border-slate-800 mb-4 shadow-sm flex-row gap-4 items-center"
+            >
+                <View className="relative">
+                    <Image
+                        source={{ uri: item.deal.image }}
+                        className="w-16 h-16 rounded-xl bg-slate-800"
+                    />
+                    <View className="absolute -top-2 -right-2 bg-amber-400 w-6 h-6 rounded-full items-center justify-center border-2 border-slate-900">
+                        <Ionicons name="gift" size={12} color="#0f172a" />
+                    </View>
+                </View>
+
+                <View className="flex-1 justify-center">
+                    <Text className="text-white font-bold text-base leading-tight" numberOfLines={1}>
+                        {item.deal.title}
+                    </Text>
+                    <Text className="text-slate-400 text-sm mt-1 mb-2">
+                        {item.deal.business.businessName}
+                    </Text>
+
+                    <View className={`self-start px-2 py-1 rounded-md border ${isExpired ? 'bg-red-900/50 border-red-800' : 'bg-amber-900/30 border-amber-700/50'}`}>
+                        <Text className={`${isExpired ? 'text-red-400' : 'text-amber-400'} text-xs font-bold`}>
+                            {isExpired ? "Expired" : `Expires ${expiryDate?.toLocaleDateString()}`}
+                        </Text>
+                    </View>
+                </View>
+
+                <Ionicons name="chevron-forward" size={20} color="#64748b" />
+            </TouchableOpacity>
+        );
+    };
 
     const renderItem = ({ item }: { item: any }) => {
         const date = new Date(item.createdAt);
@@ -69,7 +114,7 @@ export default function HistoryScreen() {
                 <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 rounded-full bg-slate-50 items-center justify-center">
                     <Ionicons name="arrow-back" size={24} color="#0f172a" />
                 </TouchableOpacity>
-                <Text className="text-xl font-black text-slate-900">Redemption History</Text>
+                <Text className="text-xl font-black text-slate-900">My Rewards</Text>
             </View>
 
             {isLoading ? (
@@ -78,17 +123,34 @@ export default function HistoryScreen() {
                 </View>
             ) : (
                 <FlatList
-                    data={redemptions}
+                    data={redemptions} // Main list is redemptions
                     keyExtractor={(item) => item.id.toString()}
                     contentContainerStyle={{ padding: 24 }}
                     renderItem={renderItem}
-                    ListEmptyComponent={
-                        <View className="items-center mt-20">
-                            <Ionicons name="receipt-outline" size={64} color="#e2e8f0" />
-                            <Text className="text-slate-900 font-bold mt-6 text-lg">No redemptions yet</Text>
-                            <Text className="text-slate-400 text-center mt-2 px-10">
-                                Once you redeem deals in-store, they will appear here as your receipt.
-                            </Text>
+                    ListHeaderComponent={
+                        <View className="mb-6">
+                            {/* Active Rewards Section */}
+                            {activeVouchers.length > 0 && (
+                                <View className="mb-8">
+                                    <Text className="text-lg font-black text-slate-900 mb-4">Active Rewards</Text>
+                                    {activeVouchers.map((voucher: any) => (
+                                        <View key={voucher.id}>
+                                            {renderVoucher({ item: voucher })}
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            <Text className="text-lg font-black text-slate-900 mb-4">Past Redemptions</Text>
+                            {activeVouchers.length === 0 && redemptions.length === 0 && (
+                                <View className="items-center mt-10">
+                                    <Ionicons name="receipt-outline" size={64} color="#e2e8f0" />
+                                    <Text className="text-slate-900 font-bold mt-6 text-lg">No rewards yet</Text>
+                                    <Text className="text-slate-400 text-center mt-2 px-10">
+                                        Spin the wheel or visit stores to earn rewards!
+                                    </Text>
+                                </View>
+                            )}
                         </View>
                     }
                 />

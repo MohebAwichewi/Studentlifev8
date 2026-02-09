@@ -20,10 +20,42 @@ export async function POST(req: Request) {
         if (!student) return NextResponse.json({ error: "Student not found" }, { status: 404 })
 
         // 3. SERVER-SIDE LOCATION CHECK (Optional Double Check)
-        // While frontend checks location for UI, backend can verify provided coords are plausible if needed.
-        // For now, we trust the coords sent by the "verified" frontend state.
+        // ... (Location check logic)
 
-        // 4. CHECK COOLDOWN (The 5-minute rule)
+        // ✅ 3.5 CHECK FOR EXISTING VOUCHER (WIN PRIZE)
+        const existingVoucher = await prisma.voucher.findFirst({
+            where: {
+                studentId: student.id,
+                dealId: deal.id,
+                isUsed: false
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        if (existingVoucher) {
+            // Validate Expiry
+            if (existingVoucher.expiresAt && new Date() > existingVoucher.expiresAt) {
+                return NextResponse.json({ error: "This voucher has expired." }, { status: 400 });
+            }
+
+            // Mark Voucher as Used
+            await prisma.voucher.update({
+                where: { id: existingVoucher.id },
+                data: { isUsed: true }
+            });
+
+            // Log Redemption
+            await prisma.redemption.create({
+                data: {
+                    studentId: student.id,
+                    dealId: deal.id,
+                }
+            });
+
+            return NextResponse.json({ success: true, message: "Prize redeemed successfully!", code: existingVoucher.code });
+        }
+
+        // 4. CHECK COOLDOWN (The 5-minute rule) -> ONLY IF NO VOUCHER
         if (deal.isMultiUse) {
             const lastRedemption = await prisma.redemption.findFirst({
                 where: {
@@ -55,7 +87,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "This deal is sold out!" }, { status: 400 })
         }
 
-        // Decrement Stock (if not infinite) and Update SoldOut status
+        // Decrement Stock (if not infinite) -> ONLY IF NO VOUCHER
         if (deal.stock !== -1) {
             await prisma.deal.update({
                 where: { id: deal.id },

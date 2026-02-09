@@ -14,13 +14,22 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyAcZPJco7e_qxO0PCs_q9ADF9pPM7Twr9U"
+      },
+      "bundleIdentifier": "com.studentlife.mobile"
     },
     "android": {
       "package": "com.studentlife.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#ffffff"
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAcZPJco7e_qxO0PCs_q9ADF9pPM7Twr9U"
+        }
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

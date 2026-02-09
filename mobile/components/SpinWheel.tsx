@@ -27,7 +27,7 @@ const COLORS = {
     WHITE: '#FFFFFF',    // Text & Center Button
     RED: '#E63946',      // Pointer & Center Text & Spin Button Text
     GOLD: '#FFD700',     // Keep for some outlines if needed, or remove
-    OVERLAY: 'rgba(0, 0, 0, 0.8)', // Dark Overlay
+    OVERLAY: 'rgba(0, 0, 0, 0.75)', // Dark Overlay (Dimmed)
 };
 
 // Segment Colors: Navy & Deep Navy (Alternating) or just Navy
@@ -182,7 +182,6 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
                             const endAngle = (index + 1) * segmentAngle;
                             const startPercent = startAngle / 360;
                             const endPercent = endAngle / 360;
-                            const isNavy = index % 2 === 0;
 
                             return (
                                 <G key={prize.id}>
@@ -233,7 +232,7 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
                 {!spinning && !showResultModal && (
                     <SafeAreaView style={styles.closeButtonContainer}>
                         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                            <Ionicons name="close-outline" size={32} color={COLORS.WHITE} />
+                            <Ionicons name="close" size={24} color={COLORS.WHITE} />
                         </TouchableOpacity>
                     </SafeAreaView>
                 )}
@@ -267,12 +266,12 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
                     // GAME UI
                     <View style={styles.gameContainer}>
 
-                        {/* Elegant Minimal Header */}
-                        <Text style={styles.brandTitle}>SPIN & WIN</Text>
-                        <View style={styles.underline} />
+                        {/* Title & Subtitle */}
+                        <Text style={styles.brandTitle}>Spin & Win</Text>
+                        <Text style={styles.brandSubtitle}>Exclusive Launch Prizes!</Text>
 
                         {loading ? (
-                            <ActivityIndicator size="large" color={COLORS.GOLD} style={{ marginVertical: 60 }} />
+                            <ActivityIndicator size="large" color={COLORS.WHITE} style={{ marginVertical: 60 }} />
                         ) : apiError ? (
                             <View style={styles.errorBox}>
                                 <Text style={styles.errorText}>{apiError}</Text>
@@ -291,7 +290,7 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
 
                                 {/* Center "Spin" Hub */}
                                 <View style={styles.centerTextContainer} pointerEvents="none">
-                                    <Text style={{ color: COLORS.RED, fontWeight: '900', fontSize: 16 }}>WIN</Text>
+                                    <Text style={{ color: COLORS.RED, fontWeight: '900', fontSize: 15 }}>WIN</Text>
                                 </View>
                             </View>
                         )}
@@ -304,7 +303,7 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
                                 style={[styles.spinButton, spinning && { opacity: 0.8 }]}
                             >
                                 <Text style={styles.spinButtonText}>
-                                    {spinning ? 'Spinning...' : 'Spin Now'}
+                                    {spinning ? 'Spinning...' : 'SPIN NOW'}
                                 </Text>
                             </TouchableOpacity>
                         )}
@@ -321,19 +320,20 @@ const styles = StyleSheet.create({
         backgroundColor: COLORS.OVERLAY,
         justifyContent: 'center',
         alignItems: 'center',
+        paddingHorizontal: 20,
     },
     closeButtonContainer: {
         position: 'absolute',
-        top: 0,
-        right: 0,
-        padding: 24,
+        top: 10,
+        right: 10,
+        padding: 10,
         zIndex: 50
     },
     closeButton: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: 'rgba(255,255,255,0.2)', // Semi-transparent circle
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -345,33 +345,27 @@ const styles = StyleSheet.create({
     brandTitle: {
         color: COLORS.WHITE,
         fontSize: 32,
-        fontWeight: '200', // Thin, elegant
-        letterSpacing: 8,
-        textTransform: 'uppercase',
-        fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'sans-serif-light',
+        fontWeight: '800', // Bold
+        marginBottom: 4,
+        textAlign: 'center',
     },
-    underline: {
-        width: 40,
-        height: 1,
-        backgroundColor: COLORS.GOLD,
-        marginTop: 12,
-        marginBottom: 50,
+    brandSubtitle: {
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 40,
+        textAlign: 'center',
     },
     wheelContainer: {
         width: WHEEL_SIZE + 10,
         height: WHEEL_SIZE + 10,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 50,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.5,
-        shadowRadius: 20,
-        elevation: 15,
+        marginBottom: 40,
     },
     pointerContainer: {
         position: 'absolute',
-        top: -12,
+        top: -14,
         zIndex: 100,
     },
     pointerTriangle: {
@@ -379,8 +373,8 @@ const styles = StyleSheet.create({
         height: 0,
         backgroundColor: 'transparent',
         borderStyle: 'solid',
-        borderLeftWidth: 12,
-        borderRightWidth: 12,
+        borderLeftWidth: 14,
+        borderRightWidth: 14,
         borderTopWidth: 24,
         borderLeftColor: 'transparent',
         borderRightColor: 'transparent',
@@ -398,98 +392,97 @@ const styles = StyleSheet.create({
     },
     spinButton: {
         backgroundColor: COLORS.WHITE,
-        paddingVertical: 18,
-        paddingHorizontal: 60,
-        borderRadius: 40,
+        paddingVertical: 16,
+        paddingHorizontal: 50,
+        borderRadius: 50,
         shadowColor: 'black',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 10,
-        elevation: 10,
+        shadowOpacity: 0.2, // Subtle shadow
+        shadowRadius: 8,
+        elevation: 8,
     },
     spinButtonText: {
         color: COLORS.RED,
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '900', // Extra bold
-        letterSpacing: 1,
+        letterSpacing: 0.5,
         textTransform: 'uppercase',
     },
     resultModal: {
         backgroundColor: COLORS.WHITE,
-        width: '80%',
-        padding: 40,
-        borderRadius: 4, // Sharp, card-like
+        width: '90%',
+        padding: 32,
+        borderRadius: 20,
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 20 },
+        shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.25,
-        shadowRadius: 30,
-        elevation: 20,
+        shadowRadius: 20,
+        elevation: 10,
     },
     resultHeader: {
-        marginBottom: 20,
+        marginBottom: 16,
     },
     resultEmoji: {
-        fontSize: 48,
+        fontSize: 54,
     },
     resultTitle: {
-        fontSize: 14,
-        fontWeight: 'bold',
-        color: COLORS.GOLD,
-        letterSpacing: 2,
-        textTransform: 'uppercase',
-        marginBottom: 12,
+        fontSize: 18,
+        fontWeight: '800',
+        color: COLORS.NAVY,
+        marginBottom: 8,
     },
     resultName: {
-        fontSize: 24,
-        fontWeight: '300',
-        color: COLORS.DARK_RED,
+        fontSize: 22,
+        fontWeight: '500',
+        color: COLORS.RED,
         textAlign: 'center',
-        marginBottom: 30,
+        marginBottom: 24,
     },
     claimButton: {
         backgroundColor: COLORS.RED,
         width: '100%',
         paddingVertical: 16,
-        borderRadius: 2,
+        borderRadius: 12,
     },
     claimButtonText: {
         color: COLORS.WHITE,
         textAlign: 'center',
         fontWeight: 'bold',
-        fontSize: 14,
-        letterSpacing: 1,
+        fontSize: 16,
         textTransform: 'uppercase',
     },
     closeModalButton: {
-        paddingVertical: 16,
+        paddingVertical: 12,
+        width: '100%',
     },
     closeModalText: {
         color: COLORS.NAVY,
         textAlign: 'center',
-        fontSize: 14,
-        letterSpacing: 1,
-        textTransform: 'uppercase',
+        fontSize: 16,
+        fontWeight: '600',
     },
     errorBox: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(255,50,50,0.2)',
         padding: 20,
-        borderRadius: 8,
+        borderRadius: 12,
         alignItems: 'center',
         marginBottom: 20
     },
     errorText: {
         color: COLORS.WHITE,
         marginBottom: 12,
+        fontWeight: '600',
+        textAlign: 'center',
     },
     retryButton: {
-        backgroundColor: COLORS.GOLD,
+        backgroundColor: COLORS.WHITE,
         paddingHorizontal: 20,
         paddingVertical: 10,
-        borderRadius: 4,
+        borderRadius: 20,
     },
     retryText: {
-        color: COLORS.NAVY,
+        color: COLORS.RED,
         fontWeight: 'bold',
     }
 });

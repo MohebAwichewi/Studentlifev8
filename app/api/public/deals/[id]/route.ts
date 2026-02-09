@@ -40,6 +40,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
         // 2. Auth Check (for Redemption Status)
         let isRedeemed = false
         let isOwner = false // If we ever need to show owner-specific controls
+        let userVoucher: any = null
 
         const authHeader = req.headers.get('authorization')
         if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -47,7 +48,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
             try {
                 const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret') as any
 
-                // If Student, check redemption
+                // If Student, check redemption and voucher
                 if (decoded.role === 'student' && decoded.id) {
                     const redemption = await prisma.redemption.findFirst({
                         where: {
@@ -58,6 +59,15 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
                     if (redemption) {
                         isRedeemed = true
                     }
+
+                    // ✅ Check for Voucher (e.g. Won from Spin)
+                    userVoucher = await prisma.voucher.findFirst({
+                        where: {
+                            studentId: decoded.id,
+                            dealId: dealId
+                        },
+                        orderBy: { createdAt: 'desc' } // Get latest
+                    })
                 }
             } catch (e) {
                 // Token invalid or expired, treat as guest
@@ -69,7 +79,8 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
             success: true,
             deal: {
                 ...deal,
-                isRedeemed // ✅ Critical new field
+                isRedeemed, // ✅ Critical new field
+                userVoucher // ✅ Return Voucher Info (Expiry, Code)
             }
         })
 

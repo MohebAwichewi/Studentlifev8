@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions, ActivityIndicator, Modal, ScrollView, TouchableOpacity, TextInput, LayoutAnimation, Platform, UIManager, FlatList, StatusBar } from 'react-native';
-import MapView, { PROVIDER_GOOGLE, Marker, Callout, Circle } from 'react-native-maps';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { View, Text, StyleSheet, Dimensions, Modal, ScrollView, TouchableOpacity, TextInput, Platform, StatusBar, Keyboard, Alert } from 'react-native';
+import MapView, { PROVIDER_GOOGLE, Marker, Circle, Callout } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
@@ -8,53 +8,74 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../utils/api';
 import { cleanMapStyle } from '../../constants/mapStyle';
 import DealCard from '../../components/DealCard';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useFilter } from '../../context/FilterContext';
-import { Image } from 'expo-image';
 import CustomMarker from '../../components/CustomMarker';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+// --- Error Boundary ---
+class ErrorBoundary extends React.Component<any, { hasError: boolean }> {
+    constructor(props: any) {
+        super(props);
+        this.state = { hasError: false };
+    }
 
+    static getDerivedStateFromError(error: any) {
+        return { hasError: true };
+    }
 
-if (Platform.OS === 'android') {
-    if (UIManager.setLayoutAnimationEnabledExperimental) {
-        UIManager.setLayoutAnimationEnabledExperimental(true);
+    componentDidCatch(error: any, errorInfo: any) {
+        console.error("Map Error Boundary:", error, errorInfo);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <View style={styles.centerContainer}>
+                    <Ionicons name="map-outline" size={64} color="#ef4444" />
+                    <Text style={styles.errorText}>Something went wrong with the map.</Text>
+                    <TouchableOpacity onPress={() => this.setState({ hasError: false })} style={styles.retryBtn}>
+                        <Text style={styles.retryBtnText}>Retry</Text>
+                    </TouchableOpacity>
+                </View>
+            );
+        }
+        return this.props.children;
     }
 }
 
 const { width, height } = Dimensions.get('window');
+const SHEET_MAX_HEIGHT = height * 0.45;
 
 export default function MapScreen() {
-    // Context
+    return (
+        <ErrorBoundary>
+            <MapScreenContent />
+        </ErrorBoundary>
+    );
+}
+
+function MapScreenContent() {
+    // --- Context & State ---
     const {
         filterRadius, setFilterRadius,
         filterLocation, setFilterLocation,
         searchQuery, setSearchQuery
     } = useFilter();
 
-    // Reanimated State for Zoom Level
-    const currentDelta = useSharedValue(0.0922);
-
-    // Local State
-    const [viewMode, setViewMode] = useState<'map' | 'list'>('map'); // 'map' or 'list'
+    const [viewMode, setViewMode] = useState<'map' | 'list'>('map');
     const [selectedBusiness, setSelectedBusiness] = useState<any | null>(null);
     const [showDeals, setShowDeals] = useState(false);
-    const [showFilterSheet, setShowFilterSheet] = useState(false); // Default closed
+    const [showFilterSheet, setShowFilterSheet] = useState(false);
     const [citySearch, setCitySearch] = useState('');
-    const mapRef = useRef<MapView>(null);
+    const [isLoadingLocation, setIsLoadingLocation] = useState(false);
 
+    const mapRef = useRef<MapView>(null);
     const router = useRouter();
     const params = useLocalSearchParams();
 
-    // Handle Params from Home
-    useEffect(() => {
-        if (params.openFilter) {
-            setShowFilterSheet(true);
-        }
-    }, [params.openFilter]);
-
-    // Fetch businesses
+    // --- Data Fetching ---
     const { data: businessesData, refetch, isRefetching } = useQuery({
         queryKey: ['map-businesses'],
         queryFn: async () => {
@@ -64,233 +85,249 @@ export default function MapScreen() {
         staleTime: 5 * 60 * 1000,
     });
 
-    // Haversine Algo for Client-Side Filtering
+    const businesses = useMemo(() => businessesData?.businesses || [], [businessesData]);
+
+    // --- Helpers ---
     const getDistanceFromLatLonInKm = (lat1: number, lon1: number, lat2: number, lon2: number) => {
         var R = 6371; // Radius of the earth in km
-        var dLat = deg2rad(lat2 - lat1);  // deg2rad below
+        var dLat = deg2rad(lat2 - lat1);
         var dLon = deg2rad(lon2 - lon1);
-        var a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-            Math.sin(dLon / 2) * Math.sin(dLon / 2)
-            ;
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
         var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        var d = R * c; // Distance in km
-        return d;
+        return R * c;
     }
 
-    const deg2rad = (deg: number) => {
-        return deg * (Math.PI / 180)
-    }
+    const deg2rad = (deg: number) => deg * (Math.PI / 180);
 
-    const businesses = businessesData?.businesses || [];
+    // --- Filtering Logic ---
+    const filteredBusinesses = useMemo(() => {
+        return businesses.filter((b: any) => {
+            // 1. Text Search
+            let matchesSearch = true;
+            if (searchQuery) {
+                const query = searchQuery.toLowerCase();
+                matchesSearch = (
+                    b.businessName.toLowerCase().includes(query) ||
+                    (b.category && b.category.toLowerCase().includes(query)) ||
+                    (b.deals && b.deals.some((d: any) => d.title.toLowerCase().includes(query)))
+                );
+            }
 
-    // Filter businesses by Product Search (searchQuery) AND Radius
-    const filteredBusinesses = businesses.filter((b: any) => {
-        // 1. Text Search Filter
-        let matchesSearch = true;
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase();
-            matchesSearch = (
-                b.businessName.toLowerCase().includes(query) ||
-                (b.category && b.category.toLowerCase().includes(query)) ||
-                (b.deals && b.deals.some((d: any) => d.title.toLowerCase().includes(query) || d.category.toLowerCase().includes(query)))
-            );
+            // 2. Radius Filter
+            let matchesRadius = true;
+            if (filterLocation && filterRadius) {
+                const dist = getDistanceFromLatLonInKm(
+                    filterLocation.latitude,
+                    filterLocation.longitude,
+                    b.latitude,
+                    b.longitude
+                );
+                matchesRadius = dist <= filterRadius;
+            }
+
+            return matchesSearch && matchesRadius;
+        });
+    }, [businesses, searchQuery, filterLocation, filterRadius]);
+
+    // --- Camera & Zoom Logic ---
+    const autoZoomToRadius = useCallback((loc: { latitude: number, longitude: number }, radiusKm: number) => {
+        if (!mapRef.current) return;
+
+        // Calculate Bounding Box for the Circle
+        // 1 degree latitude ≈ 111 km (constant globally)
+        // For the circle to be visible, we need to show the diameter (2 * radius)
+        const latDelta = (radiusKm * 2.4) / 111; // 2.4 = diameter (2x) + 20% padding
+
+        // Longitude degrees vary by latitude, but for simplicity we use aspect ratio
+        const aspect = width / height;
+        const lonDelta = latDelta * aspect;
+
+        mapRef.current.animateToRegion({
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            latitudeDelta: latDelta,
+            longitudeDelta: lonDelta,
+        }, 1000);
+    }, []);
+
+    // Auto-zoom when location or radius changes
+    useEffect(() => {
+        if (filterLocation && mapRef.current) {
+            autoZoomToRadius(filterLocation, filterRadius);
         }
+    }, [filterLocation, filterRadius, autoZoomToRadius]);
 
-        // 2. Strict Radius Filter
-        let matchesRadius = true;
-        if (filterLocation && filterRadius) {
-            const dist = getDistanceFromLatLonInKm(
-                filterLocation.latitude,
-                filterLocation.longitude,
-                b.latitude,
-                b.longitude
-            );
-            matchesRadius = dist <= filterRadius;
+    // --- Auto-Handle Empty State ---
+    useEffect(() => {
+        if (businesses.length > 0 && filteredBusinesses.length === 0 && filterLocation) {
+            // No deals found in radius -> Find Nearest
+            let minDist = Infinity;
+            let nearest = null;
+
+            businesses.forEach((b: any) => {
+                const dist = getDistanceFromLatLonInKm(
+                    filterLocation.latitude, filterLocation.longitude,
+                    b.latitude, b.longitude
+                );
+                if (dist < minDist) {
+                    minDist = dist;
+                    nearest = b;
+                }
+            });
+
+            if (nearest && minDist > filterRadius) {
+                // User Requirement: "Automatically Zoom Out to find the nearest available deal"
+                // We must update the radius state so the pins actually appear in the filtered list
+                const proposedRadius = Math.ceil(minDist / 5) * 5; // Round up to next 5km
+
+                // Prevent infinite loops or excessive jumps (cap at 100km)
+                if (proposedRadius <= 100 && proposedRadius !== filterRadius) {
+                    setFilterRadius(proposedRadius);
+                    autoZoomToRadius(filterLocation, proposedRadius);
+                    // The banner below will show "No deals in X km..." based on the previous state? 
+                    // No, it handles the *transition*.
+                    // Actually, let's show a robust Toast or let the UI reflect the change.
+                }
+            }
         }
+    }, [filteredBusinesses.length, filterLocation, businesses]);
 
-        return matchesSearch && matchesRadius;
-    });
+    // --- Effects ---
 
-    // Sync Map Center with Context (One-time init or on Update)
+    // 1. Initial Location
     useEffect(() => {
         (async () => {
-            // Only if not set, find location
             if (!filterLocation) {
-                try {
-                    let { status } = await Location.requestForegroundPermissionsAsync();
-                    if (status !== 'granted') {
-                        // START: No Default City Logic
-                        setFilterLocation(null); // Explicitly null
-                        return; // Stop execution
-                    }
-                    let loc = await Location.getCurrentPositionAsync({});
-                    const newLoc = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-                    setFilterLocation(newLoc);
-                    animateToLocation(newLoc);
-                } catch (error) {
-
-                    // Do NOT set fallback. 
-                    // UI will show "Locating..." or we can add a specific error state.
-                }
+                handleUseCurrentLocation();
             }
         })();
     }, []);
 
-    const animateToLocation = (loc: { latitude: number, longitude: number }) => {
-        mapRef.current?.animateToRegion({
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-            latitudeDelta: 0.0922,
-            longitudeDelta: 0.0421,
-        }, 1000);
-    }
+    // 2. Watch Params (Open Filter)
+    useEffect(() => {
+        if (params.openFilter) setShowFilterSheet(true);
+    }, [params.openFilter]);
+
+    // --- Handlers ---
 
     const handleUseCurrentLocation = async () => {
+        setIsLoadingLocation(true);
         try {
             let { status } = await Location.requestForegroundPermissionsAsync();
-            if (status !== 'granted') return;
+            if (status !== 'granted') cancelLocation();
 
             let loc = await Location.getCurrentPositionAsync({});
             const newLoc = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
+
             setFilterLocation(newLoc);
-            animateToLocation(newLoc);
+            autoZoomToRadius(newLoc, filterRadius); // Zoom to current radius at new location
         } catch (error) {
-            alert("Could not fetch location. Please check your settings.");
+            Alert.alert("Error", "Could not fetch location.");
+        } finally {
+            setIsLoadingLocation(false);
         }
+    };
+
+    const cancelLocation = () => {
+        setIsLoadingLocation(false);
+        Alert.alert("Permission Required", "Please enable location to see deals near you.");
+        router.back();
     }
 
-    const handleReCenter = async () => {
+    const handleCitySearch = async () => {
+        if (!citySearch.trim()) return;
+        Keyboard.dismiss();
+
         try {
-            let loc = await Location.getCurrentPositionAsync({});
-            const newLoc = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
-            animateToLocation(newLoc);
+            const geocoded = await Location.geocodeAsync(citySearch);
+            if (geocoded.length > 0) {
+                const { latitude, longitude } = geocoded[0];
+                const newLoc = { latitude, longitude };
+
+                setFilterLocation(newLoc);
+                autoZoomToRadius(newLoc, filterRadius); // Fit to new city
+                setCitySearch('');
+            } else {
+                Alert.alert("Not Found", "City not found.");
+            }
         } catch (error) {
-            alert("Could not fetch location.");
+            Alert.alert("Error", "Geocoding failed.");
         }
-    }
+    };
 
     const handleMarkerPress = (business: any) => {
         setSelectedBusiness(business);
         setShowDeals(true);
     };
 
-    // Main Search (Products) - No longer geocodes
-    const handleProductSearch = () => {
-        // Just dismiss keyboard, filtering is reactive
-        // optional: show toast "Searching for {searchQuery}..."
-    };
+    // --- Render ---
 
-    // City Search (Location) - Moves Map
-    const handleCitySearch = async () => {
-        if (!citySearch.trim()) return;
-
-        try {
-            const geocoded = await Location.geocodeAsync(citySearch);
-
-            if (geocoded.length > 0) {
-                const { latitude, longitude } = geocoded[0];
-                const newLoc = { latitude, longitude };
-
-                setFilterLocation(newLoc);
-                animateToLocation(newLoc);
-                setCitySearch(''); // Clear after moving
-                // Optional: Close sheet? Keep open? User said "Controls live here", safest to keep open or let user close.
-            } else {
-                alert("Location not found");
-            }
-        } catch (error) {
-
-            alert("Could not find location");
-        }
-    };
-
-
-
-    // Cluster Rendering
-    const renderCluster = (cluster: any) => {
-        const { id, geometry, onPress, properties } = cluster;
-        const points = properties.point_count;
-
+    if (!filterLocation && isLoadingLocation) {
         return (
-            <Marker
-                key={`cluster-${id}`}
-                coordinate={{
-                    latitude: geometry.coordinates[1],
-                    longitude: geometry.coordinates[0],
-                }}
-                onPress={onPress}
-                tracksViewChanges={false}
-            >
-                <View className="bg-red-500 w-10 h-10 rounded-full items-center justify-center border-2 border-white shadow-sm">
-                    <Text className="text-white font-bold text-xs">{points}</Text>
+            <View style={styles.centerContainer}>
+                <View className='bg-white p-6 rounded-2xl items-center shadow-xl'>
+                    <Ionicons name="navigate-circle" size={48} color="#E63946" className='animate-pulse' />
+                    <Text className="text-slate-900 font-bold mt-4">Locating you...</Text>
                 </View>
-            </Marker>
-        );
-    };
-
-    if (!filterLocation) {
-        return (
-            <View className="flex-1 justify-center items-center bg-white px-8">
-                <Ionicons name="location-outline" size={64} color="#E63946" />
-                <Text className="text-xl font-black text-slate-900 mt-6 text-center">Location Required</Text>
-                <Text className="text-slate-500 text-center mt-2 mb-8">
-                    We do not use default locations. To find the best student deals near you, we need your real GPS location.
-                </Text>
-                <TouchableOpacity
-                    onPress={handleUseCurrentLocation}
-                    className="bg-primary px-8 py-3 rounded-full flex-row items-center gap-2"
-                >
-                    <Ionicons name="navigate" size={20} color="white" />
-                    <Text className="text-white font-bold">Enable Location</Text>
-                </TouchableOpacity>
             </View>
-        )
+        );
     }
-
-    const SHEET_HEIGHT = height * 0.45;
 
     return (
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-            {/* 1. MAP VIEW */}
+            {/* --- MAP LAYER (Z-index 0) --- */}
             {viewMode === 'map' && (
-                <View style={{ flex: 1 }}>
+                <View style={StyleSheet.absoluteFill}>
                     <ClusteredMapView
                         ref={mapRef as any}
-                        style={styles.map}
+                        style={StyleSheet.absoluteFill}
                         provider={PROVIDER_GOOGLE}
                         customMapStyle={cleanMapStyle}
+
+                        // Initial Region
                         initialRegion={{
                             latitude: filterLocation?.latitude || 46.2044,
                             longitude: filterLocation?.longitude || 6.1432,
-                            latitudeDelta: 0.0922,
-                            longitudeDelta: 0.0421,
+                            latitudeDelta: 0.2, // Default Zoom
+                            longitudeDelta: 0.2,
                         }}
+
+                        // Interaction Settings
+                        scrollEnabled={true}
+                        zoomEnabled={true}
+                        pitchEnabled={true}
+                        rotateEnabled={true}
+
+                        // Padding to avoid UI covering markers (Filter Sheet)
                         mapPadding={{
-                            top: 0,
-                            right: 0,
-                            bottom: showFilterSheet ? SHEET_HEIGHT : 0,
-                            left: 0
+                            top: 80, // Header space
+                            bottom: showFilterSheet ? SHEET_MAX_HEIGHT - 20 : 20,
+                            left: 0,
+                            right: 0
                         }}
-                        // Update location when user drags map (ONLY if filter sheet is open)
-                        // Note: We use onRegionChangeComplete to prevent jitter
-                        onRegionChangeComplete={(region) => {
-                            if (showFilterSheet) {
-                                setFilterLocation({
-                                    latitude: region.latitude,
-                                    longitude: region.longitude
-                                });
-                            }
+
+                        clusterColor="#E63946"
+                        renderCluster={(cluster: any) => {
+                            const { id, geometry, properties } = cluster;
+                            const points = properties.point_count;
+                            return (
+                                <Marker
+                                    key={`cluster-${id}`}
+                                    coordinate={{ latitude: geometry.coordinates[1], longitude: geometry.coordinates[0] }}
+                                    tracksViewChanges={false}
+                                >
+                                    <View className="bg-red-600 w-10 h-10 rounded-full items-center justify-center border-2 border-white shadow-md">
+                                        <Text className="text-white font-bold text-xs">{points}</Text>
+                                    </View>
+                                </Marker>
+                            );
                         }}
-                        showsUserLocation={true}
-                        showsMyLocationButton={false} // Custom button used
-                        clusterColor="#E63946" // Red (User Request)
-                        renderCluster={renderCluster}
-                        animationEnabled={false} // Reduce jitter on padding change
                     >
+                        {/* 1. Markers */}
                         {filteredBusinesses.map((business: any) => (
                             <CustomMarker
                                 key={business.id}
@@ -299,134 +336,67 @@ export default function MapScreen() {
                             />
                         ))}
 
-                        {/* RADIUS CIRCLE (Native Map Component) */}
+                        {/* 2. Radius Circle (Geographic) */}
                         {filterLocation && (
                             <Circle
-                                key={`circle-${filterRadius}`} // Force re-render on Android to update radius
                                 center={filterLocation}
-                                radius={filterRadius * 1000} // km to meters
-                                strokeColor="rgba(230, 57, 70, 0.8)" // Red border
-                                fillColor="rgba(230, 57, 70, 0.15)" // Light red fill
+                                radius={filterRadius * 1000} // Convert km to meters
+                                strokeColor="rgba(230, 57, 70, 0.8)"
+                                fillColor="rgba(230, 57, 70, 0.1)"
                                 strokeWidth={2}
-                                zIndex={100} // Ensure it's above tiles but below markers?
+                                zIndex={1}
                             />
+                        )}
+
+                        {/* 3. User Location Marker */}
+                        {filterLocation && (
+                            <Marker coordinate={filterLocation} zIndex={2}>
+                                <View className='bg-blue-500 w-4 h-4 rounded-full border-2 border-white shadow-sm' />
+                            </Marker>
                         )}
                     </ClusteredMapView>
 
-                    {/* FIXED CENTER CROSSHAIR (Only visual guide) */}
-                    {showFilterSheet && (
-                        <View
-                            pointerEvents="none"
-                            style={[
-                                StyleSheet.absoluteFill,
-                                {
-                                    zIndex: 10,
-                                    justifyContent: 'center',
-                                    alignItems: 'center',
-                                    paddingBottom: SHEET_HEIGHT, // Center matches map padding
-                                }
-                            ]}
-                        >
-                            {/* Center Crosshair */}
-                            <Ionicons name="add" size={32} color="#E63946" />
+                    {/* Empty State Banner (Floating) */}
+                    {businesses.length > 0 && filteredBusinesses.length === 0 && (
+                        <View className="absolute top-40 left-4 right-4 bg-slate-900/90 p-4 rounded-xl flex-row items-center justify-center gap-3 animate-in fade-in" pointerEvents="none">
+                            <Ionicons name="search" size={20} color="#cbd5e1" />
+                            <Text className="text-white font-bold text-sm">
+                                No deals in {filterRadius}km. Zooming out...
+                            </Text>
                         </View>
                     )}
                 </View>
             )}
 
+            {/* --- TOP UI LAYERS (Z-Index > 10) --- */}
 
-            {/* 1b. LIST VIEW */}
-            {
-                viewMode === 'list' && (
-                    <View className="flex-1 bg-slate-50 pt-32 px-4">
-                        {/* Fallback Logic Calculation */}
-                        {(() => {
-                            const isFallback = filteredBusinesses.length === 0 && businesses.length > 0;
-                            let displayList = filteredBusinesses;
-
-                            if (isFallback && filterLocation) {
-                                // Find closest businesses from ALL businesses
-                                displayList = businesses
-                                    .map((b: any) => ({
-                                        ...b,
-                                        dist: getDistanceFromLatLonInKm(
-                                            filterLocation.latitude, filterLocation.longitude,
-                                            b.latitude, b.longitude
-                                        )
-                                    }))
-                                    .sort((a: any, b: any) => a.dist - b.dist)
-                                    .slice(0, 10); // Top 10 closest
-                            }
-
-                            return (
-                                <>
-                                    {isFallback && (
-                                        <View className="mb-4 bg-orange-50 border border-orange-100 p-4 rounded-xl">
-                                            <Text className="text-orange-800 font-bold text-center">
-                                                No offers found in this exact location. Here are the closest offers to you:
-                                            </Text>
-                                        </View>
-                                    )}
-
-                                    <FlatList
-                                        data={displayList}
-                                        keyExtractor={(item) => item.id.toString()}
-                                        showsVerticalScrollIndicator={false}
-                                        contentContainerStyle={{ paddingBottom: 100 }}
-                                        refreshing={isRefetching}
-                                        onRefresh={refetch}
-                                        renderItem={({ item }) => (
-                                            <View className="mb-4">
-                                                {item.deals && item.deals.length > 0 ? (
-                                                    <DealCard deal={{ ...item.deals[0], business: item }} userLocation={filterLocation} />
-                                                ) : (
-                                                    <View className="bg-white p-4 rounded-xl">
-                                                        <Text className="font-bold text-lg">{item.businessName}</Text>
-                                                        <Text className="text-slate-500">No active deals</Text>
-                                                    </View>
-                                                )}
-                                            </View>
-                                        )}
-                                        ListEmptyComponent={
-                                            <Text className="text-center text-slate-500 mt-10">No businesses found matching "{searchQuery}"</Text>
-                                        }
-                                    />
-                                </>
-                            );
-                        })()}
+            {/* 1. Search Bar */}
+            <View style={styles.topBar} pointerEvents="box-none">
+                <View className="flex-row gap-3">
+                    <View className="flex-1 flex-row items-center bg-white h-12 rounded-full shadow-md px-4 border border-slate-100">
+                        <Ionicons name="search" size={20} color="#94a3b8" />
+                        <TextInput
+                            placeholder="Search deals (e.g. Burgers)" // Clarified placeholder
+                            placeholderTextColor="#94a3b8"
+                            className="flex-1 ml-3 font-bold text-slate-900"
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            onSubmitEditing={Keyboard.dismiss}
+                        />
                     </View>
-                )
-            }
-
-            {/* 2. FLOATING SEARCH BAR (Top) - Products Only */}
-            <View className="absolute top-12 left-5 right-5 z-20 flex-row gap-3">
-                <View className="flex-1 flex-row items-center bg-white h-12 rounded-full shadow-lg shadow-black/10 px-4 border border-slate-100">
-                    <Ionicons name="search" size={20} color="#94a3b8" />
-                    <TextInput
-                        placeholder="Search shops or products..." // Updated placeholder
-                        placeholderTextColor="#94a3b8"
-                        className="flex-1 ml-3 font-bold text-slate-900"
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        returnKeyType="search"
-                        onSubmitEditing={handleProductSearch} // No more geocode
-                        style={{ height: '100%' }}
-                    />
+                    <TouchableOpacity
+                        className={`w-12 h-12 rounded-full shadow-md items-center justify-center border border-slate-100 ${showFilterSheet ? 'bg-red-600' : 'bg-white'}`}
+                        onPress={() => {
+                            Keyboard.dismiss();
+                            setShowFilterSheet(prev => !prev);
+                        }}
+                    >
+                        <Ionicons name="options" size={22} color={showFilterSheet ? "white" : "#1e293b"} />
+                    </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                    className={`w-12 h-12 rounded-full shadow-lg shadow-black/10 items-center justify-center border border-slate-100 ${showFilterSheet ? 'bg-red-500 border-red-500' : 'bg-white'}`}
-                    onPress={() => {
-                        require('react-native').Keyboard.dismiss();
-                        setShowFilterSheet(prev => !prev);
-                    }}
-                >
-                    <Ionicons name="options" size={20} color={showFilterSheet ? "white" : "#9B2226"} />
-                </TouchableOpacity>
-            </View>
 
-            {/* 3. LIST / MAP TOGGLE (Top Center, below search) */}
-            <View className="absolute top-28 w-full items-center z-20">
-                <View className="flex-row bg-white rounded-full p-1 shadow-lg shadow-black/10 border border-slate-100">
+                {/* View Toggles */}
+                <View className="self-center mt-4 flex-row bg-white rounded-full p-1 shadow-sm border border-slate-100">
                     <TouchableOpacity
                         onPress={() => setViewMode('map')}
                         className={`px-6 py-2 rounded-full ${viewMode === 'map' ? 'bg-slate-900' : 'bg-transparent'}`}
@@ -442,115 +412,95 @@ export default function MapScreen() {
                 </View>
             </View>
 
-            {/* 4. RE-CENTER BUTTON (Bottom Right) - Only in Map Mode */}
-            {
-                viewMode === 'map' && (
-                    <TouchableOpacity
-                        onPress={handleReCenter}
-                        className="absolute bottom-8 right-5 w-14 h-14 bg-white rounded-full shadow-xl shadow-black/20 items-center justify-center z-10"
-                    >
-                        <Ionicons name="locate" size={28} color="#9B2226" />
-                    </TouchableOpacity>
-                )
-            }
+            {/* --- BOTTOM SHEET (Filter) --- */}
+            {/* Using absolute positioning but ensuring it doesn't block map touches above it */}
+            {showFilterSheet && (
+                <View style={[styles.bottomSheet, { height: SHEET_MAX_HEIGHT }]}>
+                    <View className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6" />
+                    <Text className="text-xl font-black text-slate-900 mb-4">Location & Radius</Text>
 
-            {/* 5. FILTER SHEET (Location Settings) */}
-            {
-                showFilterSheet && (
-                    <View className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl p-6 pb-10 z-30 animate-in slide-in-from-bottom-10">
-                        <View className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-6" />
-
-                        <Text className="text-xl font-black text-slate-900 mb-4">Location Settings</Text>
-
-                        {/* CITY SEARCH INPUT (Location Only) */}
-                        <View className="mb-6">
-                            <Text className="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wide">Change Location</Text>
-                            <View className="flex-row items-center bg-slate-100 h-12 rounded-xl px-4 border border-slate-200">
-                                <Ionicons name="location-sharp" size={20} color="#94a3b8" />
-                                <TextInput
-                                    placeholder="Enter city (e.g. London)..."
-                                    placeholderTextColor="#94a3b8"
-                                    className="flex-1 ml-3 font-bold text-slate-900"
-                                    value={citySearch}
-                                    onChangeText={setCitySearch}
-                                    returnKeyType="search"
-                                    onSubmitEditing={handleCitySearch}
-                                    style={{ height: '100%' }}
-                                />
-                                {citySearch.length > 0 && (
-                                    <TouchableOpacity onPress={handleCitySearch} className="bg-red-500 p-1.5 rounded-full">
-                                        <Ionicons name="arrow-forward" size={16} color="white" />
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        </View>
-
-                        {/* RADIUS SLIDER (Only here) */}
-                        <View className="mb-8">
-                            <View className="flex-row justify-between items-center mb-4">
-                                <Text className="text-sm font-bold text-slate-500 uppercase tracking-wide">Search Radius</Text>
-                                <Text className="text-lg font-black text-red-600">{filterRadius.toFixed(0)} km</Text>
-                            </View>
-
-                            <Slider
-                                style={{ width: '100%', height: 40 }}
-                                minimumValue={1}
-                                maximumValue={30}
-                                step={1}
-                                value={filterRadius}
-                                onValueChange={(val) => {
-                                    setFilterRadius(val);
-                                    // Zoom map to fit radius
-                                    // 1 degree lat ~ 111km
-                                    // newDelta should cover diameter (2 * radius) with padding
-                                    const newDelta = (val * 2 * 1.3) / 111;
-                                    mapRef.current?.animateToRegion({
-                                        latitude: filterLocation?.latitude || 46.2044,
-                                        longitude: filterLocation?.longitude || 6.1432,
-                                        latitudeDelta: newDelta,
-                                        longitudeDelta: newDelta * 0.5,
-                                    }, 500);
-                                }}
-                                minimumTrackTintColor="#E63946"
-                                maximumTrackTintColor="#e2e8f0"
-                                thumbTintColor="#E63946"
+                    {/* City Search */}
+                    <View className="mb-6">
+                        <Text className="text-xs font-bold text-slate-400 mb-2 uppercase">Jump to City</Text>
+                        <View className="flex-row items-center bg-slate-100 h-12 rounded-xl px-4">
+                            <Ionicons name="location-sharp" size={18} color="#64748b" />
+                            <TextInput
+                                placeholder="Enter city name..."
+                                className="flex-1 ml-3 font-bold text-slate-900"
+                                value={citySearch}
+                                onChangeText={setCitySearch}
+                                onSubmitEditing={handleCitySearch}
+                                returnKeyType="search"
                             />
-                            <View className="flex-row justify-between mt-1">
-                                <Text className="text-xs font-bold text-slate-400">1 km</Text>
-                                <Text className="text-xs font-bold text-slate-400">30 km</Text>
-                            </View>
+                            <TouchableOpacity onPress={handleCitySearch}>
+                                <Ionicons name="arrow-forward-circle" size={28} color="#E63946" />
+                            </TouchableOpacity>
                         </View>
+                    </View>
 
-                        {/* USE GPS BUTTON */}
-                        <TouchableOpacity
-                            onPress={() => {
-                                handleUseCurrentLocation();
+                    {/* Radius Slider */}
+                    <View className="mb-6">
+                        <View className="flex-row justify-between items-center mb-2">
+                            <Text className="text-xs font-bold text-slate-400 uppercase">Distance Radius</Text>
+                            <Text className="text-lg font-black text-red-600">{filterRadius.toFixed(0)} km</Text>
+                        </View>
+                        <Slider
+                            style={{ width: '100%', height: 40 }}
+                            minimumValue={1}
+                            maximumValue={50}
+                            step={1}
+                            value={filterRadius}
+                            onValueChange={(val) => {
+                                // Update visually instantly
+                                setFilterRadius(val);
                             }}
-                            className="flex-row items-center justify-center gap-2 mb-6 py-3 bg-slate-50 rounded-xl border border-slate-200"
-                        >
-                            <Ionicons name="navigate" size={18} color="#E63946" />
-                            <Text className="text-slate-900 font-bold">Use my current location</Text>
-                        </TouchableOpacity>
-
-                        {/* APPLY BUTTON */}
-                        <TouchableOpacity
-                            onPress={() => {
-                                setShowFilterSheet(false);
-                                // No need to clear params manually as we use unique timestamps now
-
-                                if (params.returnToHome === 'true') {
-                                    router.back();
-                                }
+                            onSlidingComplete={(val) => {
+                                // Smart Zoom on release
+                                if (filterLocation) autoZoomToRadius(filterLocation, val);
                             }}
-                            className="w-full bg-slate-900 py-4 rounded-xl flex-row items-center justify-center shadow-lg shadow-black/20"
-                        >
-                            <Text className="text-white font-bold text-lg">Apply Settings</Text>
-                        </TouchableOpacity>
-                    </View >
-                )
-            }
+                            minimumTrackTintColor="#E63946"
+                            maximumTrackTintColor="#e2e8f0"
+                            thumbTintColor="#E63946"
+                        />
+                        <View className="flex-row justify-between px-1">
+                            <Text className="text-xs text-slate-400">1km</Text>
+                            <Text className="text-xs text-slate-400">50km</Text>
+                        </View>
+                    </View>
 
-            {/* DEALS MODAL (On Marker Press) */}
+                    {/* Actions */}
+                    <View className="flex-row gap-3">
+                        <TouchableOpacity
+                            onPress={handleUseCurrentLocation}
+                            className="flex-1 bg-slate-100 py-3 rounded-xl flex-row justify-center items-center gap-2"
+                        >
+                            <Ionicons name="navigate" size={16} color="#0f172a" />
+                            <Text className="font-bold text-slate-900">Current Loc</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            onPress={() => setShowFilterSheet(false)}
+                            className="flex-1 bg-slate-900 py-3 rounded-xl justify-center items-center"
+                        >
+                            <Text className="font-bold text-white">Apply</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            )}
+
+            {/* --- RE-CENTER BUTTON (When Sheet Closed) --- */}
+            {(!showFilterSheet && viewMode === 'map') && (
+                <TouchableOpacity
+                    onPress={() => {
+                        if (filterLocation) autoZoomToRadius(filterLocation, filterRadius);
+                        else handleUseCurrentLocation();
+                    }}
+                    style={styles.fab}
+                >
+                    <Ionicons name="locate" size={24} color="#E63946" />
+                </TouchableOpacity>
+            )}
+
+            {/* --- DEALS MODAL --- */}
             <Modal
                 visible={showDeals}
                 animationType="slide"
@@ -558,49 +508,99 @@ export default function MapScreen() {
                 onRequestClose={() => setShowDeals(false)}
             >
                 <View className="flex-1 justify-end bg-black/50">
-                    <View className="bg-white rounded-t-3xl max-h-[80%]">
-                        {/* Header */}
+                    <View className="bg-white rounded-t-3xl max-h-[85%]">
                         <View className="flex-row items-center justify-between p-6 border-b border-slate-100">
-                            <View className="flex-1">
-                                <Text className="text-2xl font-black text-slate-900">
-                                    {selectedBusiness?.businessName}
-                                </Text>
-                            </View>
+                            <Text className="text-xl font-black text-slate-900 flex-1 mr-4" numberOfLines={1}>
+                                {selectedBusiness?.businessName}
+                            </Text>
                             <TouchableOpacity
                                 onPress={() => setShowDeals(false)}
-                                className="w-10 h-10 bg-slate-100 rounded-full items-center justify-center"
+                                className="w-8 h-8 bg-slate-100 rounded-full items-center justify-center"
                             >
-                                <Ionicons name="close" size={24} color="#64748b" />
+                                <Ionicons name="close" size={20} color="#64748b" />
                             </TouchableOpacity>
                         </View>
-
-                        {/* Deals List */}
-                        <ScrollView className="px-6 py-4" showsVerticalScrollIndicator={false}>
+                        <ScrollView className="p-6">
                             {selectedBusiness?.deals.map((deal: any) => (
                                 <View key={deal.id} className="mb-4">
-                                    <DealCard
-                                        deal={{
-                                            ...deal,
-                                            business: selectedBusiness
-                                        }}
-                                        userLocation={filterLocation}
-                                    />
+                                    <DealCard deal={{ ...deal, business: selectedBusiness }} />
                                 </View>
                             ))}
+                            <View className="h-20" />
                         </ScrollView>
                     </View>
                 </View>
             </Modal>
-        </View >
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: '#fff',
     },
-    map: {
-        width: Dimensions.get('window').width,
-        height: Dimensions.get('window').height,
+    topBar: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 60 : 50,
+        left: 20,
+        right: 20,
+        zIndex: 10, // Above Map
     },
+    bottomSheet: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'white',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        elevation: 20,
+        zIndex: 20, // Above Map
+    },
+    fab: {
+        position: 'absolute',
+        bottom: 30,
+        right: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: 'white',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+        elevation: 6,
+        zIndex: 10,
+    },
+    centerContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f8fafc',
+    },
+    errorText: {
+        marginTop: 16,
+        fontSize: 16,
+        color: '#64748b',
+        fontWeight: '600'
+    },
+    retryBtn: {
+        marginTop: 20,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        backgroundColor: '#0f172a',
+        borderRadius: 12,
+    },
+    retryBtnText: {
+        color: 'white',
+        fontWeight: 'bold',
+    }
 });

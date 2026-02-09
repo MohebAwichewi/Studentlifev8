@@ -24,6 +24,7 @@ export default function DealDetails() {
     const [isNearby, setIsNearby] = useState(false);
     const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
     const [showRedeemModal, setShowRedeemModal] = useState(false);
+    const [redeemedAt, setRedeemedAt] = useState<Date | null>(null);
 
     const { data: deal, isLoading, error } = useQuery({
         queryKey: ['deal', id],
@@ -186,6 +187,7 @@ export default function DealDetails() {
 
             setRedeeming(false);
             setCooldownSeconds(300); // Start 5 min timer immediately
+            setRedeemedAt(new Date()); // ✅ Track redemption time
             showNotification('success', "Success!", "Offer redeemed successfully.");
 
             // Removed Navigation to Success Screen
@@ -315,10 +317,20 @@ export default function DealDetails() {
 
                     <Text className="text-2xl font-black text-slate-900 leading-tight mb-4">{deal.title}</Text>
 
-                    <View className="flex-row items-center mb-8">
+                    {/* Stock limit removed as per user request (Unlimited by default) */}
+                    {/* <View className="flex-row items-center mb-8">
                         <View className="bg-red-100 px-3 py-1 rounded-full border border-red-200">
                             <Text className="text-red-700 text-xs font-bold">
                                 Only {deal.stock} left
+                            </Text>
+                        </View>
+                        <Text className="text-slate-400 ml-4 font-medium text-xs">Valid until {new Date().toLocaleDateString()}</Text>
+                    </View> */}
+
+                    <View className="flex-row items-center mb-8">
+                        <View className="bg-green-100 px-3 py-1 rounded-full border border-green-200">
+                            <Text className="text-green-700 text-xs font-bold">
+                                Unlimited Available
                             </Text>
                         </View>
                         <Text className="text-slate-400 ml-4 font-medium text-xs">Valid until {new Date().toLocaleDateString()}</Text>
@@ -387,27 +399,56 @@ export default function DealDetails() {
                                 </View>
                             ) : (
                                 <>
+                                    {/* Expiry Banner for Voucher Holders */}
+                                    {deal.userVoucher && !deal.userVoucher.isUsed && (
+                                        <View className="mb-4 bg-amber-50 border border-amber-200 p-3 rounded-lg flex-row items-center justify-center">
+                                            <FontAwesome5 name="gift" size={16} color="#d97706" />
+                                            <Text className="text-amber-800 font-bold ml-2 text-sm">
+                                                Prize expires on {new Date(deal.userVoucher.expiresAt).toLocaleDateString()}
+                                            </Text>
+                                        </View>
+                                    )}
+
                                     <TouchableOpacity
-                                        className={`w-full py-4 rounded-xl shadow-lg flex-row items-center justify-center ${deal.isRedeemed // ✅ Check Server Status FIRST
-                                            ? 'bg-slate-100'
-                                            : (!isNearby && liveDistance !== null) || cooldownSeconds > 0
+                                        className={`w-full py-4 rounded-xl shadow-lg flex-row items-center justify-center ${
+                                            // 1. If Prize Voucher Used -> Grey
+                                            deal.userVoucher?.isUsed
                                                 ? 'bg-slate-100'
-                                                : 'bg-[#E63946]'
+                                                : // 2. If Single-Use Deal Already Redeemed -> Grey
+                                                (!deal.isMultiUse && deal.isRedeemed)
+                                                    ? 'bg-slate-100'
+                                                    : // 3. If Cooldown Active -> Grey
+                                                    cooldownSeconds > 0
+                                                        ? 'bg-slate-100'
+                                                        : // 4. If Too Far -> Grey
+                                                        (!isNearby && liveDistance !== null)
+                                                            ? 'bg-slate-100'
+                                                            : 'bg-[#E63946]'
                                             }`}
-                                        disabled={deal.isRedeemed || (!isNearby && liveDistance !== null) || cooldownSeconds > 0}
+                                        disabled={
+                                            deal.userVoucher?.isUsed ||
+                                            (!deal.isMultiUse && deal.isRedeemed) ||
+                                            cooldownSeconds > 0 ||
+                                            (!isNearby && liveDistance !== null)
+                                        }
                                         onPress={() => setShowRedeemModal(true)}
                                     >
-                                        <Text className={`font-black text-lg ${deal.isRedeemed || (!isNearby && liveDistance !== null) || cooldownSeconds > 0
-                                            ? 'text-slate-400'
-                                            : 'text-white'
+                                        <Text className={`font-black text-lg ${deal.userVoucher?.isUsed ||
+                                                (!deal.isMultiUse && deal.isRedeemed) ||
+                                                cooldownSeconds > 0 ||
+                                                (!isNearby && liveDistance !== null)
+                                                ? 'text-slate-400'
+                                                : 'text-white'
                                             }`}>
-                                            {deal.isRedeemed
-                                                ? "Already Redeemed" // ✅ Server says Used
-                                                : cooldownSeconds > 0
-                                                    ? `Redeemed! (${formatTime(cooldownSeconds)})` // Local Cooldown
-                                                    : (!isNearby && liveDistance !== null)
-                                                        ? `Move Closer (${(liveDistance / 1000).toFixed(1)} km)`
-                                                        : "Tap to Collect"
+                                            {deal.userVoucher?.isUsed
+                                                ? "Prize Redeemed"
+                                                : (!deal.isMultiUse && deal.isRedeemed)
+                                                    ? "Already Redeemed"
+                                                    : cooldownSeconds > 0
+                                                        ? `Redeemed! (${formatTime(cooldownSeconds)})`
+                                                        : (!isNearby && liveDistance !== null)
+                                                            ? `Move Closer (${(liveDistance / 1000).toFixed(1)} km)`
+                                                            : (deal.userVoucher ? "Swipe to Claim Prize" : "Tap to Collect")
                                             }
                                         </Text>
                                     </TouchableOpacity>
@@ -415,7 +456,7 @@ export default function DealDetails() {
                                     <Modal
                                         visible={showRedeemModal}
                                         onClose={() => setShowRedeemModal(false)}
-                                        title="Confirm Redemption"
+                                        title={deal.userVoucher ? "Claim Your Prize" : "Confirm Redemption"}
                                     >
                                         <View className="items-center py-4">
                                             <Text className="text-slate-500 text-center mb-8 px-4">
@@ -427,7 +468,9 @@ export default function DealDetails() {
                                                     handleRedeem();
                                                 }}
                                                 disabled={false} // Already checked via button access
-                                                text="Swipe to Confirm >>"
+                                                text={deal.userVoucher ? "Swipe to Claim >>" : "Swipe to Confirm >>"}
+                                                isRedeemed={!!(deal.userVoucher?.isUsed || deal.isRedeemed || redeemedAt)}
+                                                redeemedAt={redeemedAt || (deal.userVoucher?.isUsed ? new Date() : undefined)}
                                             />
                                         </View>
                                     </Modal>

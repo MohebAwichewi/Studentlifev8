@@ -42,6 +42,7 @@ export async function POST(req: Request) {
                 image: image || "",
                 category: category || "General",
                 status: 'PENDING', // ✅ Requires admin approval
+                stock: -1, // ✅ Default to Unlimited (User Requested)
                 views: 0,
                 claimed: 0,
                 isMultiUse: isMultiUse || false,

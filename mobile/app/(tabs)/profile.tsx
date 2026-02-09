@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Linking, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
@@ -24,6 +24,30 @@ export default function ProfileScreen() {
     const [selectedColor, setSelectedColor] = useState('b6e3f4');
     const [previewSeed, setPreviewSeed] = useState(user?.id || 'seed');
 
+    // Sync Seed with User ID
+    useEffect(() => {
+        if (user?.id) {
+            setPreviewSeed(user.id);
+        }
+    }, [user?.id]);
+
+    // Parse existing avatar on mount/user change
+    useEffect(() => {
+        if (user?.profilePicture && user.profilePicture.includes('dicebear.com')) {
+            try {
+                // Example: https://api.dicebear.com/7.x/open-peeps/png?seed=...&backgroundColor=...
+                const url = user.profilePicture;
+                const styleMatch = url.match(/7\.x\/([^/]+)\/png/);
+                const colorMatch = url.match(/backgroundColor=([^&]+)/);
+
+                if (styleMatch && styleMatch[1]) setSelectedStyle(styleMatch[1]);
+                if (colorMatch && colorMatch[1]) setSelectedColor(colorMatch[1]);
+            } catch (e) {
+                console.log("Error parsing avatar URL", e);
+            }
+        }
+    }, [user?.profilePicture]);
+
     const getAvatarUrl = (style: string, color: string, seed: string) => {
         return `https://api.dicebear.com/7.x/${style}/png?seed=${seed}&backgroundColor=${color}`;
     };
@@ -37,7 +61,6 @@ export default function ProfileScreen() {
         console.log("Saving Avatar:", newAvatarUrl); // DEBUG LOG
 
         try {
-            // 2. API Call (Switched to fetch for stability)
             // 2. API Call (Switched to fetch for stability)
             const token = await SecureStore.getItemAsync('student_token');
             const baseURL = api.defaults.baseURL || 'https://student-life.uk/api';
@@ -396,14 +419,15 @@ export default function ProfileScreen() {
                 stylesList={avatarStyles}
                 colorsList={avatarColors}
                 previewUrl={getAvatarUrl(selectedStyle, selectedColor, previewSeed)}
+                previewSeed={previewSeed} // ✅ PASSED SEED
                 isLoading={isSavingAvatar}
             />
         </SafeAreaView >
     );
 }
 
-// Avatar Modal Component (Inline for simplicity as requested)
-const AvatarModal = ({ visible, onClose, onSave, selectedStyle, setSelectedStyle, selectedColor, setSelectedColor, stylesList, colorsList, previewUrl, isLoading }: any) => {
+// Avatar Modal Component
+const AvatarModal = ({ visible, onClose, onSave, selectedStyle, setSelectedStyle, selectedColor, setSelectedColor, stylesList, colorsList, previewUrl, previewSeed, isLoading }: any) => {
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View className="flex-1 justify-end bg-black/50">
@@ -432,7 +456,8 @@ const AvatarModal = ({ visible, onClose, onSave, selectedStyle, setSelectedStyle
                             >
                                 <View className="w-14 h-14 bg-white rounded-full overflow-hidden">
                                     <Image
-                                        source={{ uri: `https://api.dicebear.com/7.x/${style}/png?seed=icon` }}
+                                        // ✅ Use matched seed for accurate preview icon
+                                        source={{ uri: `https://api.dicebear.com/7.x/${style}/png?seed=${previewSeed || 'icon'}` }}
                                         className="w-full h-full"
                                     />
                                 </View>

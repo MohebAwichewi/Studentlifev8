@@ -57,14 +57,16 @@ export default function HomeScreen() {
     const {
         filterLocation,
         setFilterLocation,
+        filterRadius,
         searchQuery,
         setSearchQuery,
         isFiltering,
-        activeCategory // ✅ Get activeCategory
+        activeCategory
     } = useFilter();
 
     const [cityName, setCityName] = useState("Locating...");
     const [showSpinWheel, setShowSpinWheel] = useState(false);
+    const [showingFallback, setShowingFallback] = useState(false);
 
     useEffect(() => {
         if (filterLocation) {
@@ -89,8 +91,8 @@ export default function HomeScreen() {
     }, [filterLocation]);
 
     // Data Fetching (Deals)
-    const { data: deals, isLoading, refetch } = useQuery({
-        queryKey: ['deals', filterLocation, searchQuery, activeCategory], // ✅ Add to key
+    const { data: allDeals, isLoading, refetch } = useQuery({
+        queryKey: ['deals', filterLocation, searchQuery, activeCategory],
         queryFn: async () => {
             if (!filterLocation) return [];
             try {
@@ -98,9 +100,9 @@ export default function HomeScreen() {
                     params: {
                         lat: filterLocation.latitude,
                         lng: filterLocation.longitude,
-                        radius: 30, // Fixed radius for now or use filterRadius
+                        radius: 100, // Fetch all deals within 100km
                         search: searchQuery,
-                        category: activeCategory // ✅ Pass category
+                        category: activeCategory
                     }
                 });
                 return res.data.deals || [];
@@ -111,9 +113,47 @@ export default function HomeScreen() {
         enabled: !!filterLocation
     });
 
+    // Client-side radius filtering with fallback
+    const { deals, isFallback } = React.useMemo(() => {
+        if (!allDeals || !filterLocation) return { deals: [], isFallback: false };
+
+        // Calculate distance for each deal
+        const dealsWithDistance = allDeals.map((deal: any) => {
+            const dealLat = deal.business?.latitude;
+            const dealLng = deal.business?.longitude;
+
+            if (!dealLat || !dealLng) return { ...deal, distance: Infinity };
+
+            // Haversine formula for distance
+            const R = 6371; // Earth's radius in km
+            const dLat = (dealLat - filterLocation.latitude) * Math.PI / 180;
+            const dLon = (dealLng - filterLocation.longitude) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(filterLocation.latitude * Math.PI / 180) * Math.cos(dealLat * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = R * c;
+
+            return { ...deal, distance };
+        });
+
+        // Filter by radius
+        const withinRadius = dealsWithDistance.filter((d: any) => d.distance <= filterRadius);
+
+        if (withinRadius.length > 0) {
+            setShowingFallback(false);
+            return { deals: withinRadius, isFallback: false };
+        }
+
+        // No deals within radius - show closest ones
+        const sortedByDistance = dealsWithDistance.sort((a: any, b: any) => a.distance - b.distance);
+        setShowingFallback(true);
+        return { deals: sortedByDistance.slice(0, 10), isFallback: true };
+    }, [allDeals, filterLocation, filterRadius]);
+
     const topPicksNearYou = deals?.filter((d: any) => !d.isSoldOut).slice(0, 5) || [];
-    const recentlyAdded = deals?.slice(0, 5) || []; // Just mock for now
-    const expiringSoon = deals?.slice(0, 5) || []; // Just mock for now
+    const recentlyAdded = deals?.slice(0, 5) || [];
+    const expiringSoon = deals?.slice(0, 5) || [];
 
     const renderSection = (title: string, data: any[], sortType: string) => {
         if (!data || data.length === 0) return null;
@@ -173,9 +213,9 @@ export default function HomeScreen() {
                     {/* SPIN BUTTON */}
                     <TouchableOpacity
                         onPress={() => setShowSpinWheel(true)}
-                        className="w-10 h-10 rounded-full bg-slate-900 items-center justify-center shadow-sm"
+                        className="w-10 h-10 rounded-full bg-red-600 items-center justify-center shadow-sm"
                     >
-                        <Ionicons name="color-palette" size={20} color="#FFD700" />
+                        <Ionicons name="gift" size={20} color="#FFFFFF" />
                     </TouchableOpacity>
 
                     {/* BELL ICON (Restored) */}
