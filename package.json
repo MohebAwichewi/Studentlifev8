@@ -25,6 +25,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@yudiel/react-qr-scanner": "^2.5.0",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.9.0",
     "framer-motion": "^12.27.1",
     "html5-qrcode": "^2.3.8",
     "jsonwebtoken": "^9.0.3",

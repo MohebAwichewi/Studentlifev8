@@ -2,6 +2,10 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Script from 'next/script'
+import Toast from '@/components/Toast'
+import ConfirmationModal from '@/components/ConfirmationModal'
+import InputModal from '@/components/InputModal'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -10,6 +14,31 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('overview')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [settingsForm, setSettingsForm] = useState({ email: '', oldPassword: '', newPassword: '' })
+
+  // Notification, Confirmation & Input State
+  const [notification, setNotification] = useState<{ message: string, type: 'success' | 'error' } | null>(null)
+  const [confirmation, setConfirmation] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: () => void, isDanger?: boolean } | null>(null)
+  const [inputModal, setInputModal] = useState<{ isOpen: boolean, title: string, message: string, onConfirm: (val: string) => void, isDanger?: boolean, placeholder?: string } | null>(null)
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setNotification({ message, type })
+  }
+
+  const confirmAction = (title: string, message: string, onConfirm: () => void, isDanger = false) => {
+    setConfirmation({ isOpen: true, title, message, onConfirm, isDanger })
+  }
+
+  const closeConfirmation = () => {
+    setConfirmation(null)
+  }
+
+  const promptAction = (title: string, message: string, onConfirm: (val: string) => void, isDanger = false, placeholder = "") => {
+    setInputModal({ isOpen: true, title, message, onConfirm, isDanger, placeholder })
+  }
+
+  const closeInputModal = () => {
+    setInputModal(null)
+  }
 
   // Push Modal State
   const [isPushModalOpen, setIsPushModalOpen] = useState(false)
@@ -64,7 +93,7 @@ export default function AdminDashboard() {
   const [spinPrizes, setSpinPrizes] = useState<any[]>([])
   const [isPrizeModalOpen, setIsPrizeModalOpen] = useState(false)
   const [editingPrize, setEditingPrize] = useState<any>(null)
-  const [prizeForm, setPrizeForm] = useState({ name: '', type: 'LOSE', weight: 1, quantity: 0, dealId: '' })
+  const [prizeForm, setPrizeForm] = useState({ name: '', type: 'LOSE', weight: 1, quantity: 0, dealId: '', businessId: '' })
 
   // --- INITIAL LOAD ---
   useEffect(() => {
@@ -85,7 +114,7 @@ export default function AdminDashboard() {
     if (activeTab === 'categories') fetchCategories()
     if (activeTab === 'partners') fetchPartners()
     if (activeTab === 'verifications') fetchVerifications()
-    if (activeTab === 'spin-wheel') fetchSpinPrizes()
+    if (activeTab === 'spin-wheel') { fetchSpinPrizes(); fetchPartners(); }
   }, [activeTab])
 
   // Calculate Estimate (Push)
@@ -254,160 +283,184 @@ export default function AdminDashboard() {
   }
 
   const handleDealAction = async (dealId: string, action: string) => {
-    let reason = null
+    const doUpdate = async (reason?: string) => {
+      setPendingDeals(prev => prev.filter(deal => deal.id !== dealId))
+      setOffersList(prev => prev.map(deal =>
+        deal.id === dealId ? { ...deal, status: action === 'APPROVE' ? 'ACTIVE' : 'REJECTED' } : deal
+      ))
 
-    // Prompt for rejection reason if rejecting
-    if (action === 'REJECT') {
-      reason = prompt(
-        "Why are you rejecting this deal?\n\nCommon reasons:\n• Inappropriate content\n• Misleading information\n• Violates terms of service\n• Poor quality image\n• Other",
-        "Please review and resubmit with correct information"
-      )
-      if (!reason) return // Cancel if no reason provided
+      try {
+        const res = await fetch('/api/auth/admin/approve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: dealId, type: 'deal', action, reason })
+        })
+        if (!res.ok) throw new Error("Action failed")
+        if (activeTab === 'offers') fetchOffers()
+      } catch (error) {
+        console.error("Action failed", error)
+        showToast("Failed to update deal", "error")
+        fetchOverviewData()
+      }
     }
 
-    setPendingDeals(prev => prev.filter(deal => deal.id !== dealId))
-    setOffersList(prev => prev.map(deal =>
-      deal.id === dealId ? { ...deal, status: action === 'APPROVE' ? 'ACTIVE' : 'REJECTED' } : deal
-    ))
-
-    try {
-      const res = await fetch('/api/auth/admin/approve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: dealId, type: 'deal', action, reason })
-      })
-      if (!res.ok) throw new Error("Action failed")
-      if (activeTab === 'offers') fetchOffers()
-    } catch (error) {
-      console.error("Action failed", error)
-      alert("Failed to update deal")
-      fetchOverviewData()
+    if (action === 'REJECT') {
+      promptAction(
+        "Reject Deal?",
+        "Why are you rejecting this deal?\n\nCommon reasons:\n• Inappropriate content\n• Misleading information\n• Violates terms of service\n",
+        (reason) => doUpdate(reason),
+        true,
+        "Please review and resubmit..."
+      )
+    } else {
+      doUpdate()
     }
   }
 
-  const handlePriority = async (dealId: string, newScore: string) => {
-    setOffersList(prev => prev.map(deal => deal.id === dealId ? { ...deal, priorityScore: parseInt(newScore) } : deal))
-    try {
-      await fetch('/api/auth/admin/deals/prioritize', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId, priorityScore: newScore })
-      })
-    } catch (error) { console.error("Priority update failed") }
+  const handleStatusUpdate = async (id: number, status: string) => {
+    const doUpdate = async () => {
+      try {
+        const res = await fetch('/api/auth/admin/partners/status', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ businessId: id, status })
+        })
+        if (res.ok) {
+          setRecentApplications(prev => prev.filter(p => p.id !== id))
+          setPartnersList(prev => prev.map(p => p.id === id ? { ...p, status } : p))
+          showToast(status === 'DELETE' ? "Partner Deleted" : `Partner ${status}`, "success")
+        } else {
+          showToast("Action failed", "error")
+        }
+      } catch (e) { showToast("Server Error", "error") }
+    }
+
+    if (status === 'DELETE') {
+      confirmAction("Delete Partner?", "Are you sure you want to delete this partner? This action cannot be undone.", () => doUpdate(), true)
+    } else if (status === 'REJECTED') {
+      confirmAction("Reject Partner?", "Are you sure you want to reject this partner application?", () => doUpdate(), true)
+    } else {
+      doUpdate()
+    }
+  }
+
+  const handleDealStatus = async (id: number, status: string) => {
+    const doUpdate = async () => {
+      try {
+        const res = await fetch('/api/auth/admin/deals/status', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dealId: id, status })
+        })
+        if (res.ok) {
+          setPendingDeals(prev => prev.filter(d => d.id !== id))
+          showToast(`Deal ${status}`, "success")
+        } else {
+          showToast("Failed to update deal", "error")
+        }
+      } catch (e) { showToast("Server Error", "error") }
+    }
+
+    if (status === 'REJECTED') {
+      confirmAction("Reject Deal?", "Are you sure you want to reject this deal?", () => doUpdate(), true)
+    } else {
+      doUpdate()
+    }
   }
 
   const handleExtendTrial = async (businessId: string) => {
-    if (!confirm("Add 14 days to this partner's trial?")) return
-    try {
-      const res = await fetch('/api/auth/admin/extend-trial', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessId })
-      })
-      if (res.ok) {
-        alert("Trial Extended Successfully!")
-        fetchOverviewData()
-      }
-    } catch (error) { alert("Failed to extend trial") }
-  }
-
-  const handleFixImage = async (id: string, type: 'deal' | 'business_logo') => {
-    setPhotoTarget({ id, type })
-    setSelectedImage(null)
-    setIsPhotoModalOpen(true)
+    confirmAction("Extend Trial?", "Add 14 days to this partner's trial?", async () => {
+      try {
+        const res = await fetch('/api/auth/admin/partners/extend-trial', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ businessId })
+        })
+        if (res.ok) {
+          showToast("Trial Extended Successfully!", "success")
+          fetchPartners()
+        } else {
+          throw new Error("Failed")
+        }
+      } catch (error) { showToast("Failed to extend trial", "error") }
+    })
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
+      if (file.size > 5 * 1024 * 1024) return showToast("File too large (Max 5MB)", "error")
       const reader = new FileReader()
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string)
-      }
+      reader.onloadend = () => setSelectedImage(reader.result as string)
       reader.readAsDataURL(file)
     }
   }
 
   const handleUploadSubmit = async () => {
-    if (!photoTarget || !selectedImage) return
+    if (!selectedImage || !photoTarget) return
     setIsUploading(true)
     try {
-      const res = await fetch('/api/auth/admin/fix-image', {
+      const endpoint = photoTarget.type === 'deal' ? '/api/auth/admin/upload/deal-image' : '/api/auth/admin/upload/business-logo'
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: photoTarget.type,
-          id: photoTarget.id,
-          newUrl: selectedImage // Sends Base64
-        })
+        body: JSON.stringify({ id: photoTarget.id, image: selectedImage })
       })
+
       if (res.ok) {
-        alert("Image updated successfully!")
+        showToast("Image updated successfully!", "success")
         setIsPhotoModalOpen(false)
-        // Refresh logic
-        fetchOverviewData()
+        setSelectedImage(null)
         if (activeTab === 'offers') fetchOffers()
+        if (activeTab === 'partners') fetchPartners()
       } else {
-        alert("Failed to update image.")
+        showToast("Failed to update image.", "error")
       }
     } catch (error) {
-      console.error(error)
-      alert("Server error uploading image.")
+      showToast("Server error uploading image.", "error")
     } finally {
       setIsUploading(false)
     }
   }
 
-  // ✅ NEW: Handle Business Update
+  // Handle Update Business Profile
   const handleUpdateBusiness = async () => {
-    if (!editingBusiness) return
     try {
-      const res = await fetch('/api/auth/admin/partner/update', {
+      const res = await fetch('/api/auth/admin/partners/update', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingBusiness)
       })
+
       if (res.ok) {
-        alert("Business Profile Updated!")
+        showToast("Business Profile Updated!", "success")
         setIsEditBusinessModalOpen(false)
         fetchPartners()
       } else {
-        alert("Update failed")
+        showToast("Update failed", "error")
       }
-    } catch (error) { alert("Server Error") }
+    } catch (error) { showToast("Server Error", "error") }
   }
 
-  const openEditBusinessModal = (business: any) => {
-    setEditingBusiness(business)
-    setIsEditBusinessModalOpen(true)
-  }
-
-
-  // ✅ NEW: Handle Deal Update
+  // Handle Update Deal
   const handleUpdateDeal = async () => {
-    if (!editingDeal) return
     try {
-      const res = await fetch('/api/auth/admin/deals', {
+      const res = await fetch('/api/auth/admin/deals/update', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingDeal)
       })
+
       if (res.ok) {
-        alert("Deal Updated Successfully!")
+        showToast("Deal Updated Successfully!", "success")
         setIsEditDealModalOpen(false)
-        if (activeTab === 'offers') fetchOffers()
+        fetchOffers()
       } else {
-        alert("Failed to update deal")
+        showToast("Failed to update deal", "error")
       }
     } catch (error) {
-      console.error("Update failed", error)
-      alert("Server error")
+      showToast("Server error", "error")
     }
-  }
-
-  const openEditDealModal = (deal: any) => {
-    setEditingDeal(deal)
-    setIsEditDealModalOpen(true)
   }
 
   const handleUpdatePlan = async (id: string, currentPlan: string) => {
@@ -420,7 +473,35 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, plan: newPlan })
       })
-    } catch (error) { alert("Failed to update plan") }
+    } catch (error) { showToast("Failed to update plan", "error") }
+  }
+
+  // --- RESTORED HANDLERS ---
+  const handlePriority = async (dealId: string, newScore: string) => {
+    setOffersList(prev => prev.map(deal => deal.id === dealId ? { ...deal, priorityScore: parseInt(newScore) } : deal))
+    try {
+      await fetch('/api/auth/admin/deals/prioritize', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId, priorityScore: newScore })
+      })
+    } catch (error) { console.error("Priority update failed") }
+  }
+
+  const handleFixImage = (id: string, type: 'deal' | 'business_logo') => {
+    setPhotoTarget({ id, type })
+    setSelectedImage(null)
+    setIsPhotoModalOpen(true)
+  }
+
+  const openEditBusinessModal = (business: any) => {
+    setEditingBusiness(business)
+    setIsEditBusinessModalOpen(true)
+  }
+
+  const openEditDealModal = (deal: any) => {
+    setEditingDeal(deal)
+    setIsEditDealModalOpen(true)
   }
 
   const handlePushAction = async (id: string, action: string) => {
@@ -437,34 +518,27 @@ export default function AdminDashboard() {
   }
 
   const handleSendManualPush = async () => {
-    if (!pushForm.title || !pushForm.body) return alert("Please fill title and body")
-    setIsPushModalOpen(false)
-    try {
-      const res = await fetch('/api/auth/admin/push/send-manual', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: pushForm.title,
-          message: pushForm.body,
-          filters: {
-            universityId: pushForm.universityId,
-            radius: pushForm.radius,
-            verifiedOnly: pushForm.verifiedOnly
-          },
-          estimatedReach
+    if (!pushForm.title || !pushForm.body) return showToast("Please fill title and body", "error")
+
+    confirmAction("Send Push Notification?", `This will be sent to approx ${estimatedReach || 0} students.`, async () => {
+      try {
+        const res = await fetch('/api/auth/admin/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pushForm)
         })
-      })
-      if (res.ok) {
-        alert("Notification Blast Sent Successfully!")
-        setPushForm({ title: '', body: '', universityId: '', radius: 0, verifiedOnly: false })
-        fetchNotifications()
-      } else {
-        alert("Failed to send notification")
+
+        if (res.ok) {
+          showToast("Notification Blast Sent Successfully!", "success")
+          setIsPushModalOpen(false)
+          setPushForm({ title: '', body: '', universityId: '', radius: 0, verifiedOnly: false })
+        } else {
+          showToast("Failed to send notification", "error")
+        }
+      } catch (e) {
+        showToast("Server Error", "error")
       }
-    } catch (error) {
-      console.error(error)
-      alert("Server Error")
-    }
+    }, true)
   }
 
   const handleAddCategory = async () => {
@@ -501,13 +575,14 @@ export default function AdminDashboard() {
 
       if (res.ok) {
         const data = await res.json()
-        alert(data.message)
+        showToast(data.message, "success")
         fetchOverviewData() // Refresh stats
+        fetchVerifications() // Refresh list
       } else {
         throw new Error('Verification failed')
       }
     } catch (error) {
-      alert('Failed to process verification')
+      showToast('Failed to process verification', "error")
       fetchVerifications() // Reload on error
     }
   }
@@ -536,7 +611,7 @@ export default function AdminDashboard() {
         alert("Prize Saved!")
         setIsPrizeModalOpen(false)
         fetchSpinPrizes()
-        setPrizeForm({ name: '', type: 'LOSE', weight: 1, quantity: 0, dealId: '' })
+        setPrizeForm({ name: '', type: 'LOSE', weight: 1, quantity: 0, dealId: '', businessId: '' })
         setEditingPrize(null)
       } else {
         alert("Failed to save prize")
@@ -560,11 +635,12 @@ export default function AdminDashboard() {
         type: prize.type,
         weight: prize.weight,
         quantity: prize.quantity,
-        dealId: prize.dealId || ''
+        dealId: prize.dealId || '',
+        businessId: prize.businessId || ''
       })
     } else {
       setEditingPrize(null)
-      setPrizeForm({ name: '', type: 'LOSE', weight: 1, quantity: 0, dealId: '' })
+      setPrizeForm({ name: '', type: 'LOSE', weight: 1, quantity: 0, dealId: '', businessId: '' })
     }
     setIsPrizeModalOpen(true)
   }
@@ -686,11 +762,13 @@ export default function AdminDashboard() {
                         </button>
                         <button
                           onClick={() => {
-                            const reason = prompt(
-                              "Rejection Reason:\n1. Blurry Image\n2. Expired ID\n3. Wrong Document\n4. Other",
-                              "Blurry Image"
+                            promptAction(
+                              "Reject ID?",
+                              "Please provide a reason for rejecting this ID verification.",
+                              (reason) => handleVerificationAction(student.id, 'REJECT', reason),
+                              true,
+                              "Blurry Image, Expired, etc."
                             )
-                            if (reason) handleVerificationAction(student.id, 'REJECT', reason)
                           }}
                           className="flex-1 bg-red-500 text-white py-2.5 rounded-xl font-bold text-sm hover:bg-red-600 transition"
                         >
@@ -884,6 +962,40 @@ export default function AdminDashboard() {
                       </div>
                     </div>
 
+                    {/* NEW: Business Select Dropdown */}
+                    <div className="mt-4">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Linked Business (Brand)</label>
+                      <select
+                        className="w-full p-3 bg-slate-50 rounded-xl font-bold border-r-8 border-transparent text-sm"
+                        value={prizeForm.businessId}
+                        onChange={e => setPrizeForm({ ...prizeForm, businessId: e.target.value })}
+                      >
+                        <option value="">No Business (Generic)</option>
+                        {partnersList.map((partner: any) => (
+                          <option key={partner.id} value={partner.id}>
+                            {partner.businessName} ({partner.city})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* NEW: Business Select Dropdown */}
+                    <div className="mt-4">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Linked Business (Brand)</label>
+                      <select
+                        className="w-full p-3 bg-slate-50 rounded-xl font-bold border-r-8 border-transparent text-sm"
+                        value={prizeForm.businessId}
+                        onChange={e => setPrizeForm({ ...prizeForm, businessId: e.target.value })}
+                      >
+                        <option value="">No Business (Generic)</option>
+                        {partnersList.map((partner: any) => (
+                          <option key={partner.id} value={partner.id}>
+                            {partner.businessName} ({partner.city})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
                     <button onClick={handleSavePrize} className="w-full py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition mt-4">
                       Save Prize
                     </button>
@@ -901,6 +1013,40 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FC] font-sans flex">
+      {/* 3rd Party Scripts */}
+      <Script src="https://kit.fontawesome.com/1234567890.js" strategy="lazyOnload" />
+
+      {/* UI ALERTS */}
+      {notification && (
+        <Toast
+          message={notification.message}
+          type={notification.type}
+          onClose={() => setNotification(null)}
+        />
+      )}
+
+      {confirmation && (
+        <ConfirmationModal
+          isOpen={confirmation.isOpen}
+          title={confirmation.title}
+          message={confirmation.message}
+          onConfirm={() => { confirmation.onConfirm(); closeConfirmation() }}
+          onCancel={closeConfirmation}
+          isDanger={confirmation.isDanger}
+        />
+      )}
+
+      {inputModal && (
+        <InputModal
+          isOpen={inputModal.isOpen}
+          title={inputModal.title}
+          message={inputModal.message}
+          placeholder={inputModal.placeholder}
+          onConfirm={(val) => { inputModal.onConfirm(val); closeInputModal() }}
+          onCancel={closeInputModal}
+          isDanger={inputModal.isDanger}
+        />
+      )}
       <aside className="w-64 bg-white border-r border-slate-100 flex flex-col fixed h-full z-10">
         <div className="p-8">
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Student<span className="text-red-500">.LIFE</span></h1>
@@ -1180,7 +1326,16 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1">Category</label>
-                    <input className="w-full p-3 bg-slate-50 rounded-xl font-bold" value={editingBusiness.category || ''} onChange={e => setEditingBusiness({ ...editingBusiness, category: e.target.value })} />
+                    <select
+                      className="w-full p-3 bg-slate-50 rounded-xl font-bold"
+                      value={editingBusiness.category || ''}
+                      onChange={e => setEditingBusiness({ ...editingBusiness, category: e.target.value })}
+                    >
+                      <option value="">Select Category...</option>
+                      {categories.map((cat: any) => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1">Description (About)</label>
@@ -1339,11 +1494,16 @@ export default function AdminDashboard() {
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1">Category</label>
-                    <input
+                    <select
                       className="w-full p-3 bg-slate-50 rounded-xl font-bold"
                       value={editingDeal.category}
                       onChange={e => setEditingDeal({ ...editingDeal, category: e.target.value })}
-                    />
+                    >
+                      <option value="">Select Category...</option>
+                      {categories.map((cat: any) => (
+                        <option key={cat.id} value={cat.name}>{cat.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

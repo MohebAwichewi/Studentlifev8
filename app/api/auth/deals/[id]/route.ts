@@ -10,7 +10,8 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
         }
 
         const deal = await prisma.deal.findUnique({
-            where: { id }
+            where: { id },
+            include: { categories: true }
         })
 
         if (!deal) {
@@ -63,7 +64,14 @@ export async function PUT(req: Request, props: { params: Promise<{ id: string }>
                 status,
                 rejectionReason,
                 subCategory,
-                redemptionType
+                subCategory,
+                redemptionType,
+                // ✅ Update Categories
+                ...(body.categoryIds && {
+                    categories: {
+                        set: body.categoryIds.map((id: any) => ({ id: Number(id) }))
+                    }
+                })
             }
         })
 

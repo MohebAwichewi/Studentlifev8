@@ -4,6 +4,7 @@ import React, { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Script from 'next/script'
+import Toast from '@/components/Toast'
 
 // --- TYPES ---
 type Tab = 'overview' | 'deals' | 'billing' | 'settings' | 'verify'
@@ -34,26 +35,7 @@ interface AudienceData {
     universities: { name: string, percent: number }[]
 }
 
-// --- NOTIFICATION COMPONENT ---
-function Toast({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) {
-    useEffect(() => {
-        const timer = setTimeout(onClose, 3000)
-        return () => clearTimeout(timer)
-    }, [onClose])
 
-    return (
-        <div className={`fixed top-6 left-1/2 transform -translate-x-1/2 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl transition-all animate-in slide-in-from-top-5 duration-300 ${type === 'success' ? 'bg-[#0F392B] text-white' : 'bg-red-500 text-white'}`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-white/20`}>
-                <i className={`fa-solid ${type === 'success' ? 'fa-check' : 'fa-triangle-exclamation'}`}></i>
-            </div>
-            <div>
-                <h4 className="font-bold text-sm">{type === 'success' ? 'Success' : 'Error'}</h4>
-                <p className="text-xs text-white/90 font-medium">{message}</p>
-            </div>
-            <button onClick={onClose} className="ml-4 text-white/50 hover:text-white transition"><i className="fa-solid fa-xmark"></i></button>
-        </div>
-    )
-}
 
 function DashboardContent() {
     const router = useRouter()
@@ -116,6 +98,9 @@ function DashboardContent() {
     // Modal State
     const [showModal, setShowModal] = useState(false)
 
+    // --- CATEGORY STATE ---
+    const [categories, setCategories] = useState<any[]>([])
+
     // DEAL FORM STATE
     const [dealForm, setDealForm] = useState({
         title: '',
@@ -126,6 +111,8 @@ function DashboardContent() {
         expiry: '',
         isIndefinite: false,
         image: '',
+        category: '',
+        categoryIds: [] as string[], // ✅ Added Category IDs for Multi-Select
         redemptionMethod: 'SWIPE_SINGLE' as 'SWIPE_SINGLE' | 'SWIPE_MULTI' | 'CODE_SINGLE'
     })
     const [creatingDeal, setCreatingDeal] = useState(false)
@@ -228,6 +215,11 @@ function DashboardContent() {
             safeFetch('/api/auth/business/stats', { businessId: id }).then(data => {
                 if (data && data.success) setStats(data.stats)
             });
+
+            // 6. Categories (✅ FETCH CATEGORIES)
+            safeFetch('/api/auth/admin/categories').then(data => {
+                if (data) setCategories(data)
+            })
         }
     }, [router, searchParams])
 
@@ -311,9 +303,14 @@ function DashboardContent() {
     const handleCreateDeal = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!isTrialActive && !isSubscribed) {
-            showToast("Free trial expired. Please upgrade to post deals.", "error")
+            showToast("Free trial expired. Please upgrade to post offers.", "error")
             return;
         }
+        if (dealForm.categoryIds.length === 0) {
+            showToast("Please select at least one category", "error")
+            return;
+        }
+
         setCreatingDeal(true)
         const emailToSend = businessEmail || localStorage.getItem('businessEmail');
 
@@ -328,6 +325,10 @@ function DashboardContent() {
         const isMultiUse = dealForm.redemptionMethod === 'SWIPE_MULTI';
         const redemptionType = dealForm.redemptionMethod === 'CODE_SINGLE' ? 'CODE' : 'SWIPE';
 
+        // Legacy Fallback: Use the name of the first selected category
+        const firstCatId = dealForm.categoryIds[0];
+        const firstCat = categories.find(c => c.id.toString() === firstCatId) || { name: 'General' };
+
         try {
             const res = await fetch('/api/auth/deals/create', {
                 method: 'POST',
@@ -340,7 +341,8 @@ function DashboardContent() {
                     expiry: finalExpiry,
                     image: dealForm.image,
                     businessId,
-                    category: "Food",
+                    category: firstCat.name, // Legacy String Fallback
+                    categoryIds: dealForm.categoryIds, // ✅ Send Multiple Categories
                     isMultiUse: isMultiUse,
                     redemptionType: redemptionType,
                 })
@@ -360,12 +362,12 @@ function DashboardContent() {
                 }, ...prev])
                 setShowModal(false)
                 setDealForm({
-                    title: '', description: '', discountAmount: '', hasDiscount: false, discountType: 'PERCENTAGE', expiry: '', isIndefinite: false, image: '', redemptionMethod: 'SWIPE_SINGLE'
+                    title: '', description: '', discountAmount: '', hasDiscount: false, discountType: 'PERCENTAGE', expiry: '', isIndefinite: false, image: '', category: '', categoryIds: [], redemptionMethod: 'SWIPE_SINGLE'
                 })
                 setStats(prev => ({ ...prev, reach: prev.reach + 125 }))
                 showToast("Deal Published Successfully!", "success")
             } else {
-                showToast(data.error || "Could not create deal", "error")
+                showToast(data.error || "Could not create offer", "error")
             }
         } catch (err) {
             showToast("Network connection error", "error")
@@ -523,18 +525,25 @@ function DashboardContent() {
                         </div>
                         {filteredHistory.length === 0 ? (
                             <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-slate-300">
-                                <p className="text-slate-500 mb-6">No deals found for this filter.</p>
-                                {filterStatus === 'ALL' && (isTrialActive || isSubscribed) && <button onClick={() => setShowModal(true)} className="text-[#0F392B] font-bold underline">Create your first deal</button>}
+                                <p className="text-slate-500 mb-6">No offers found for this filter.</p> {/* Rebranded */}
+                                {filterStatus === 'ALL' && (isTrialActive || isSubscribed) && <button onClick={() => setShowModal(true)} className="text-[#0F392B] font-bold underline">Create your first offer</button>} {/* Rebranded */}
                             </div>
                         ) : (
                             <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
                                 <div className="p-6 border-b border-slate-50 flex justify-between items-center">
-                                    <h3 className="font-bold text-lg">Deal History</h3>
+                                    <h3 className="font-bold text-lg">Offer History</h3> {/* Rebranded */}
                                     <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{filteredHistory.length} Record{filteredHistory.length !== 1 && 's'}</span>
                                 </div>
                                 <table className="w-full text-left">
                                     <thead className="bg-slate-50 text-slate-400 text-xs uppercase font-bold">
-                                        <tr><th className="px-6 py-4">Deal Details</th><th className="px-6 py-4">Date</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Action</th></tr>
+                                        <tr>
+                                            <th className="px-6 py-4">Offer Details</th> {/* Rebranded */}
+                                            <th className="px-6 py-4">Clicks</th>       {/* ✅ New Column */}
+                                            <th className="px-6 py-4">Redemptions</th>  {/* ✅ New Column */}
+                                            <th className="px-6 py-4">Date</th>
+                                            <th className="px-6 py-4">Status</th>
+                                            <th className="px-6 py-4 text-right">Action</th>
+                                        </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
                                         {filteredHistory.map((deal) => (
@@ -547,6 +556,14 @@ function DashboardContent() {
                                                         <div><div className="font-bold text-slate-900">{deal.title}</div><div className="text-xs text-slate-500">{deal.discountValue} • {deal.views} views</div></div>
                                                     </div>
                                                 </td>
+                                                {/* ✅ NEW ANALYTICS COLUMNS */}
+                                                <td className="px-6 py-4 text-sm font-bold text-purple-600">
+                                                    <i className="fa-solid fa-computer-mouse mr-2 opacity-50"></i>{deal.clicks || 0}
+                                                </td>
+                                                <td className="px-6 py-4 text-sm font-bold text-green-600">
+                                                    <i className="fa-solid fa-ticket mr-2 opacity-50"></i>{deal.claimed || 0}
+                                                </td>
+
                                                 <td className="px-6 py-4 text-xs font-bold text-slate-500">{deal.createdAt ? new Date(deal.createdAt).toLocaleDateString() : 'Just now'}</td>
                                                 <td className="px-6 py-4">
                                                     {deal.status === 'ACTIVE' && <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide"><i className="fa-solid fa-check"></i> Accepted</span>}
@@ -554,10 +571,10 @@ function DashboardContent() {
                                                     {deal.status === 'PENDING' && <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wide"><i className="fa-solid fa-clock"></i> Pending</span>}
                                                 </td>
                                                 <td className="px-6 py-4 text-right pt-6 flex justify-end gap-2">
-                                                    <Link href={`/business/edit-deal/${deal.id}`} className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-blue-500 transition flex items-center justify-center" title="Edit Deal">
+                                                    <Link href={`/business/edit-deal/${deal.id}`} className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-blue-500 transition flex items-center justify-center" title="Edit Offer"> {/* Rebranded Tooltip */}
                                                         <i className="fa-solid fa-pen"></i>
                                                     </Link>
-                                                    <button onClick={() => handleDeleteDeal(deal.id)} className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-red-500 transition flex items-center justify-center" title="Delete Deal">
+                                                    <button onClick={() => handleDeleteDeal(deal.id)} className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-red-500 transition flex items-center justify-center" title="Delete Offer"> {/* Rebranded Tooltip */}
                                                         <i className="fa-solid fa-trash"></i>
                                                     </button>
                                                 </td>
@@ -745,7 +762,43 @@ function DashboardContent() {
                                 </div>
                             </div>
 
-                            <InputGroup label="Deal Title" placeholder="e.g. 2-for-1 Burgers" value={dealForm.title} onChange={(v: string) => setDealForm({ ...dealForm, title: v })} />
+                            <InputGroup label="Offer Title" placeholder="e.g. 2-for-1 Burgers" value={dealForm.title} onChange={(v: string) => setDealForm({ ...dealForm, title: v })} />
+
+                            {/* ✅ CATEGORIES (MULTI-SELECT) */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Categories (Select Multiple)</label>
+                                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                                    {categories.map((cat: any) => {
+                                        const isSelected = dealForm.categoryIds.includes(cat.id.toString());
+                                        return (
+                                            <div
+                                                key={cat.id}
+                                                onClick={() => {
+                                                    const currentIds = dealForm.categoryIds;
+                                                    const catId = cat.id.toString();
+                                                    let newIds;
+                                                    if (currentIds.includes(catId)) {
+                                                        newIds = currentIds.filter(id => id !== catId);
+                                                    } else {
+                                                        newIds = [...currentIds, catId];
+                                                    }
+                                                    setDealForm({ ...dealForm, categoryIds: newIds });
+                                                }}
+                                                className={`cursor-pointer px-3 py-2.5 rounded-xl border-2 font-bold text-xs text-center transition-all select-none flex items-center justify-center gap-2 ${isSelected
+                                                        ? 'bg-[#0F392B] border-[#0F392B] text-white shadow-md'
+                                                        : 'bg-slate-50 border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-white'
+                                                    }`}
+                                            >
+                                                {cat.name}
+                                                {isSelected && <i className="fa-solid fa-check"></i>}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                                {dealForm.categoryIds.length === 0 && (
+                                    <p className="text-xs text-red-400 mt-2 font-bold px-1"><i className="fa-solid fa-circle-exclamation mr-1"></i> Required</p>
+                                )}
+                            </div>
 
                             {/* ✅ REDEMPTION METHOD SELECTOR */}
                             <div>

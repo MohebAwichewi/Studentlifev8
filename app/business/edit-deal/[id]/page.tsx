@@ -26,6 +26,7 @@ export default function EditDealPage() {
         title: '',
         discount: '',
         category: '',
+        categoryIds: [] as string[], // ✅ Added Category IDs
         subCategory: '',
         validUntil: '',
         description: '',
@@ -76,6 +77,7 @@ export default function EditDealPage() {
                     title: deal.title,
                     discount: deal.discountValue,
                     category: deal.category,
+                    categoryIds: deal.categories ? deal.categories.map((c: any) => c.id.toString()) : [], // ✅ Pre-fill Categories
                     subCategory: deal.subCategory || "", // If your schema supports subCategory
                     validUntil: deal.expiry ? new Date(deal.expiry).toISOString().split('T')[0] : "",
                     description: desc,
@@ -137,6 +139,7 @@ export default function EditDealPage() {
                     title: formData.title,
                     discount: formData.discount,
                     category: formData.category,
+                    categoryIds: formData.categoryIds, // ✅ Send Updated Categories
                     // subCategory: formData.subCategory, // Add if schema supports it
                     expiry: formData.validUntil,
                     description: fullDescription,
@@ -253,36 +256,46 @@ export default function EditDealPage() {
                                     </div>
 
                                     {/* UPDATED CATEGORY SECTION */}
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Category</label>
-                                            <select
-                                                required
-                                                className="w-full bg-[#F8F9FC] border border-slate-200 rounded-xl px-5 py-4 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#FF3B30] appearance-none"
-                                                value={formData.category}
-                                                onChange={handleCategoryChange}
-                                            >
-                                                <option value="">Select...</option>
-                                                {categories.map(cat => (
-                                                    <option key={cat.id} value={cat.name}>{cat.name}</option>
-                                                ))}
-                                            </select>
+                                    {/* UPDATED CATEGORY SECTION (MULTI-SELECT) */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Categories (Select Multiple)</label>
+                                        <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar border border-slate-200 rounded-xl p-2 bg-[#F8F9FC]">
+                                            {categories.map((cat: any) => {
+                                                const isSelected = formData.categoryIds.includes(cat.id.toString());
+                                                return (
+                                                    <div
+                                                        key={cat.id}
+                                                        onClick={() => {
+                                                            const currentIds = formData.categoryIds;
+                                                            const catId = cat.id.toString();
+                                                            let newIds;
+                                                            if (currentIds.includes(catId)) {
+                                                                newIds = currentIds.filter((id: string) => id !== catId);
+                                                            } else {
+                                                                newIds = [...currentIds, catId];
+                                                            }
+                                                            // Also update the legacy single category string to the first selected one
+                                                            const firstCat = categories.find((c: any) => c.id.toString() === (newIds[0] || ''));
+                                                            setFormData({
+                                                                ...formData,
+                                                                categoryIds: newIds,
+                                                                category: firstCat ? firstCat.name : ''
+                                                            });
+                                                        }}
+                                                        className={`cursor-pointer px-3 py-2.5 rounded-xl border-2 font-bold text-xs text-center transition-all select-none flex items-center justify-center gap-2 ${isSelected
+                                                                ? 'bg-[#FF3B30] border-[#FF3B30] text-white shadow-md'
+                                                                : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'
+                                                            }`}
+                                                    >
+                                                        {cat.name}
+                                                        {isSelected && <i className="fa-solid fa-check"></i>}
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
-
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">Sub Category</label>
-                                            <select
-                                                className={`w-full bg-[#F8F9FC] border border-slate-200 rounded-xl px-5 py-4 font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#FF3B30] appearance-none ${subCategories.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                                value={formData.subCategory || ''}
-                                                onChange={e => setFormData({ ...formData, subCategory: e.target.value })}
-                                                disabled={subCategories.length === 0}
-                                            >
-                                                <option value="">Select...</option>
-                                                {subCategories.map(sub => (
-                                                    <option key={sub.id} value={sub.name}>{sub.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
+                                        {formData.categoryIds.length === 0 && (
+                                            <p className="text-xs text-red-500 mt-2 font-bold"><i className="fa-solid fa-circle-exclamation mr-1"></i> Please select at least one category</p>
+                                        )}
                                     </div>
 
                                     {/* Image Upload */}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { sendVerificationSuccess, sendVerificationRejection } from '@/lib/email'
 
 export async function POST(req: Request) {
     try {
@@ -10,8 +11,7 @@ export async function POST(req: Request) {
         }
 
         const student = await prisma.student.findUnique({
-            where: { id: studentId },
-            include: { university: true }
+            where: { id: studentId }
         })
 
         if (!student) {
@@ -25,11 +25,8 @@ export async function POST(req: Request) {
                 data: { isVerified: true }
             })
 
-            // TODO: Send push notification
-            // await sendPushNotification(student.pushToken, {
-            //   title: "Welcome to Student Life!",
-            //   body: "Your ID has been verified. Start exploring exclusive deals!"
-            // })
+            // Send Success Email
+            await sendVerificationSuccess(student.email, student.fullName)
 
             return NextResponse.json({
                 success: true,
@@ -39,23 +36,22 @@ export async function POST(req: Request) {
         }
 
         if (action === 'REJECT') {
-            // Reject: Keep isVerified as false, they can try verification again
+            // Reject: Clear idCardUrl so they don't appear in pending anymore
+            // User must re-upload ID to be verified again
             await prisma.student.update({
                 where: { id: studentId },
                 data: {
-                    isVerified: false
+                    isVerified: false,
+                    idCardUrl: null
                 }
             })
 
-            // TODO: Send email with rejection reason
-            // await sendEmail(student.email, {
-            //   subject: "ID Verification - Action Required",
-            //   body: `Your ID verification was rejected. Reason: ${reason || 'Please upload a clear photo of your student ID'}. Please re-upload your ID in the app.`
-            // })
+            // Send Rejection Email
+            await sendVerificationRejection(student.email, student.fullName, reason || "ID document issue")
 
             return NextResponse.json({
                 success: true,
-                message: 'Student rejected. They can re-upload their ID.',
+                message: 'Student rejected. Email sent.',
                 action: 'REJECTED',
                 reason
             })

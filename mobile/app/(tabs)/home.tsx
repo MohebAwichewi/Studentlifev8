@@ -48,6 +48,7 @@ const CategoryPills = () => {
 };
 
 import SpinWheel from '../../components/SpinWheel';
+import NoSpinPopup from '../../components/NoSpinPopup';
 
 // ... existing imports ...
 
@@ -66,6 +67,7 @@ export default function HomeScreen() {
 
     const [cityName, setCityName] = useState("Locating...");
     const [showSpinWheel, setShowSpinWheel] = useState(false);
+    const [showNoSpinPopup, setShowNoSpinPopup] = useState(false); // ✅ New State
     const [showingFallback, setShowingFallback] = useState(false);
 
     useEffect(() => {
@@ -89,6 +91,19 @@ export default function HomeScreen() {
             })();
         }
     }, [filterLocation]);
+
+    // Check for Active Prizes (Background Fetch)
+    const { data: activePrizes } = useQuery({
+        queryKey: ['activePrizes'],
+        queryFn: async () => {
+            try {
+                if (!user) return [];
+                const res = await api.get('/auth/student/prizes');
+                return res.data.prizes || [];
+            } catch (e) { return []; }
+        },
+        enabled: !!user
+    });
 
     // Data Fetching (Deals)
     const { data: allDeals, isLoading, refetch } = useQuery({
@@ -212,7 +227,18 @@ export default function HomeScreen() {
                 <View className="flex-row items-center gap-3">
                     {/* SPIN BUTTON */}
                     <TouchableOpacity
-                        onPress={() => setShowSpinWheel(true)}
+                        onPress={() => {
+                            if (!user) {
+                                router.push('/(auth)/login');
+                                return;
+                            }
+                            // Strict Check: activePrizes must be an array and have length
+                            if (!activePrizes || activePrizes.length === 0) {
+                                setShowNoSpinPopup(true); // ✅ Show Custom Popup
+                                return;
+                            }
+                            setShowSpinWheel(true);
+                        }}
                         className="w-10 h-10 rounded-full bg-red-600 items-center justify-center shadow-sm"
                     >
                         <Ionicons name="gift" size={20} color="#FFFFFF" />
@@ -291,6 +317,7 @@ export default function HomeScreen() {
             </ScrollView>
 
             <SpinWheel visible={showSpinWheel} onClose={() => setShowSpinWheel(false)} />
+            <NoSpinPopup visible={showNoSpinPopup} onClose={() => setShowNoSpinPopup(false)} />
 
         </SafeAreaView >
     );

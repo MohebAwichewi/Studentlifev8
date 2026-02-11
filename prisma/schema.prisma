@@ -37,7 +37,7 @@ model Student {
   notifications Notification[]
   
   // Gamification
-  hasSpunWheel  Boolean @default(false)
+  lastSpinAt    DateTime?
 
   createdAt DateTime @default(now())
 }
@@ -101,6 +101,7 @@ model Business {
   pushRequests PushRequest[]
   locations    Location[]
   tickets      Ticket[]
+  spinPrizes   SpinPrize[]
 
   createdAt DateTime @default(now())
 }
@@ -137,9 +138,15 @@ model Deal {
   stock           Int       @default(10) // Default stock
   isSoldOut       Boolean   @default(false)
 
+
+
   // Relations
   businessId  String
   business    Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  
+  // ✅ Categories (Many-to-Many)
+  categories  Category[]
+  
   savedBy     SavedDeal[]
   redemptions Redemption[]
   
@@ -271,6 +278,9 @@ model Category {
   parent    Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children  Category[] @relation("CategoryHierarchy")
   
+  // Relations
+  deals     Deal[]
+
   createdAt DateTime   @default(now())
 }
 
@@ -300,6 +310,10 @@ model SpinPrize {
   // Linked Deal (if type == WIN)
   dealId    Int?
   deal      Deal?    @relation(fields: [dealId], references: [id])
+  
+  // Linked Business (for Branding)
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
   
   wins      Int      @default(0) // Total times won
   createdAt DateTime @default(now())

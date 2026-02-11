@@ -55,18 +55,39 @@ export async function POST(req: Request) {
         // 2. Transaction for Concurrency Logic
         console.log("🚀 [API] Starting Transaction...");
         const result = await prisma.$transaction(async (tx) => {
-            // A. Check if user already spun
+            // A. Check if user already spun within 12 hours
             const student = await tx.student.findUnique({
                 where: { id: studentId },
-                select: { hasSpunWheel: true, fullName: true }
+                select: { lastSpinAt: true, fullName: true }
             });
-            console.log("🚀 [API] Student found:", student?.fullName, "Has Spun:", student?.hasSpunWheel);
+            console.log("🚀 [API] Student found:", student?.fullName, "Last Spin:", student?.lastSpinAt);
 
             if (!student) throw new Error('Student not found');
-            if (student.hasSpunWheel) throw new Error('Already spun');
+
+            // Check Cooldown (12 Hours)
+            if (student.lastSpinAt) {
+                const now = new Date();
+                const diff = now.getTime() - new Date(student.lastSpinAt).getTime();
+                const cooldown = 12 * 60 * 60 * 1000; // 12 hours in ms
+
+                if (diff < cooldown) {
+                    const remainingMs = cooldown - diff;
+                    throw new Error(`COOLDOWN:${remainingMs}`);
+                }
+            }
 
             // B. Get all prizes
-            const prizes = await tx.spinPrize.findMany();
+            const prizes = await tx.spinPrize.findMany({
+                include: {
+                    business: {
+                        select: {
+                            businessName: true,
+                            logo: true,
+                            city: true
+                        }
+                    }
+                }
+            });
             console.log("🚀 [API] Prizes loaded:", prizes.length);
 
             // C. Select Winner
@@ -90,52 +111,63 @@ export async function POST(req: Request) {
                 });
             }
 
-            // E. Mark User as Spun
+            // E. Mark User as Spun (Update Timestamp)
+            const now = new Date();
             await tx.student.update({
                 where: { id: studentId },
-                data: { hasSpunWheel: true }
+                data: { lastSpinAt: now } // ✅ Update Timestamp
             });
 
             // F. Create Notification (Only if WIN)
-            await tx.notification.create({
-                data: {
-                    studentId: studentId,
-                    title: 'Congratulations! You won!',
-                    message: `You won a ${prize.name}! Tap here to claim it.`,
-                    type: 'WIN',
-                    dealId: prize.dealId
-                }
-            });
-
-            // G. Create Voucher for the Prize (14 Day Expiry)
-            if (prize.dealId) {
-                const uniqueCode = `WIN-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substr(2, 4)}`.toUpperCase();
-                // 14 Days from now
-                const expiresAt = new Date();
-                expiresAt.setDate(expiresAt.getDate() + 14);
-
-                await tx.voucher.create({
+            if (prize.type === 'WIN') {
+                await tx.notification.create({
                     data: {
-                        code: uniqueCode,
                         studentId: studentId,
-                        dealId: prize.dealId,
-                        isUsed: false,
-                        expiresAt: expiresAt // ✅ Save Expiry
+                        title: 'Congratulations! You won!',
+                        message: `You won a ${prize.name}! Tap here to claim it.`,
+                        type: 'WIN',
+                        dealId: prize.dealId
                     }
                 });
+
+                // G. Create Voucher for the Prize (14 Day Expiry)
+                if (prize.dealId) {
+                    const uniqueCode = `WIN-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substr(2, 4)}`.toUpperCase();
+                    // 14 Days from now
+                    const expiresAt = new Date();
+                    expiresAt.setDate(expiresAt.getDate() + 14);
+
+                    await tx.voucher.create({
+                        data: {
+                            code: uniqueCode,
+                            studentId: studentId,
+                            dealId: prize.dealId,
+                            isUsed: false,
+                            expiresAt: expiresAt
+                        }
+                    });
+                }
             }
 
-            return prize;
+            // Return Prize + Next Spin Time
+            const nextSpin = new Date(now.getTime() + (12 * 60 * 60 * 1000));
+            return { ...prize, nextSpin };
         });
 
         console.log("🚀 [API] Transaction Success:", result);
-        return NextResponse.json({ success: true, prize: result });
+        return NextResponse.json({ success: true, prize: result, nextSpin: result.nextSpin });
 
     } catch (error: any) {
-        console.error("❌ [API] Spin Error:", error);
-        if (error.message === 'Already spun') {
-            return NextResponse.json({ error: 'You have already used your spin.' }, { status: 400 });
+        console.error("❌ [API] Spin Error:", error.message);
+
+        if (error.message.startsWith('COOLDOWN:')) {
+            const remainingMs = parseInt(error.message.split(':')[1]);
+            return NextResponse.json({
+                error: 'Cooldown active',
+                remainingMs
+            }, { status: 400 });
         }
+
         if (error.message === 'No prizes available') {
             return NextResponse.json({ error: 'No prizes currently available. Please try again later.' }, { status: 400 });
         }

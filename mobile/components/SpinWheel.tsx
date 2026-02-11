@@ -7,6 +7,7 @@ import Animated, {
     useSharedValue,
     useAnimatedStyle,
     withTiming,
+    withRepeat,
     Easing,
     runOnJS,
 } from 'react-native-reanimated';
@@ -41,6 +42,8 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
     const [result, setResult] = useState<any | null>(null);
     const [showResultModal, setShowResultModal] = useState(false);
     const [apiError, setApiError] = useState<string | null>(null);
+    const [nextSpin, setNextSpin] = useState<Date | null>(null);
+    const [timeLeft, setTimeLeft] = useState<string>("");
 
     const rotation = useSharedValue(0);
 
@@ -60,6 +63,14 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
             const res = await api.get('/auth/student/prizes');
             if (res.data.success && res.data.prizes.length > 0) {
                 setPrizes(res.data.prizes);
+
+                // Set Countdown if exists
+                if (res.data.nextSpinTime) {
+                    const next = new Date(res.data.nextSpinTime);
+                    if (next > new Date()) {
+                        setNextSpin(next);
+                    }
+                }
             } else {
                 setApiError("No prizes currently available.");
             }
@@ -69,6 +80,29 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
             setLoading(false);
         }
     };
+
+    // Countdown Timer Logic
+    useEffect(() => {
+        if (!nextSpin) return;
+
+        const interval = setInterval(() => {
+            const now = new Date();
+            const diff = nextSpin.getTime() - now.getTime();
+
+            if (diff <= 0) {
+                setNextSpin(null);
+                setTimeLeft("");
+                clearInterval(interval);
+            } else {
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+                setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+            }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [nextSpin]);
 
     const getCoordinatesForPercent = (percent: number) => {
         const x = Math.cos(2 * Math.PI * percent) * RADIUS;
@@ -94,19 +128,43 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
         setSpinning(true);
         setApiError(null);
 
+        // START SPINNING IMMEDIATELY (Continuous loop while waiting)
+        // We rotate indefinitely until the API returns
+        const durationPerRotation = 800; // Fast spin
+        rotation.value = withRepeat(
+            withTiming(rotation.value + 360, { duration: durationPerRotation, easing: Easing.linear }),
+            -1, // Infinite repeat
+            false // No reverse
+        );
+
         try {
             const res = await api.post('/auth/student/spin');
 
             if (res.data.success) {
                 const wonPrize = res.data.prize;
+                // Update Next Spin from response
+                if (res.data.nextSpin) {
+                    setNextSpin(new Date(res.data.nextSpin));
+                }
                 spinToPrize(wonPrize);
             } else {
                 setApiError(res.data.error || "Spin unavailable");
                 setSpinning(false);
+                // Stop spinning
+                rotation.value = rotation.value; // Freeze
             }
         } catch (e: any) {
             setSpinning(false);
-            setApiError(e.response?.data?.error || "Connection error");
+            if (e.response?.data?.remainingMs) {
+                // Handle late cooldown detection
+                const next = new Date(Date.now() + e.response.data.remainingMs);
+                setNextSpin(next);
+                setApiError(null);
+            } else {
+                setApiError(e.response?.data?.error || "Connection error");
+            }
+            // Stop spinning
+            rotation.value = rotation.value; // Freeze
         }
     };
 
@@ -117,20 +175,62 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
             return;
         }
 
+        // 1. Calculate Landing Angle
         const segmentAngle = 360 / prizes.length;
-        const minRotations = 10; // Luxury spin (longer)
 
         // Target: Center of segment at TOP (270deg)
+        // If segment 0 starts at 0deg, its center is at segmentAngle/2.
+        // We want that center to be at 270deg.
+        // Required visual angle = 270 - centerAngleOfSegment.
         const centerAngleOfSegment = (winnerIndex * segmentAngle) + (segmentAngle / 2);
 
-        // Random subtle jitter for realism
-        const jitter = (Math.random() - 0.5) * (segmentAngle * 0.5);
+        // Calculate "offset" needed from 0 to align this segment to top
+        let alignOffset = 270 - centerAngleOfSegment;
 
-        let targetRotation = (360 * minRotations) + (270 - centerAngleOfSegment) + jitter;
+        // Add randomness
+        const jitter = (Math.random() - 0.5) * (segmentAngle * 0.5);
+        alignOffset += jitter;
+
+        // 2. Smooth Transition from Infinite Spin
+        // We are currently at `rotation.value` (approx).
+        // Since we used withRepeat, the value might be resetting or growing. 
+        // To be safe and smooth, we cancel the current animation and start a new one
+        // that adds enough rotations to look good.
+
+        // Read current rotation from the shared value (on JS thread this is allowed in Reanimated 2/3)
+        // Note: withRepeat logic might make this tricky if it resets value 0->360. 
+        // Just in case, let's assume we want to add 5 full spins + alignment.
+
+        // Fix: Instead of reading potentially unstable value during withRepeat, 
+        // we just start a "Landing" animation that adds a large fixed amount relative to "visual" 0?
+        // No, that jumps.
+
+        // Better Strategy involved in handleSpin:
+        // Instead of withRepeat(0->360), Use a large cumulative value in handleSpin?
+        // Actually, let's use the 'cancelAnimation' implicit behavior of setting a new value.
+
+        // Current value might be e.g. 1450.
+        // We want to land at (Multiple of 360) + alignOffset.
+        // Let's find the next multiple of 360 that is > current + (360 * 5).
+
+        let currentRot = rotation.value;
+        const minRotations = 5;
+        const targetMin = currentRot + (360 * minRotations);
+
+        // Find the specific angle where (angle % 360) matches (alignOffset % 360)
+        // standardizing alignOffset to 0-360 range
+        let normalizedAlign = (alignOffset % 360);
+        if (normalizedAlign < 0) normalizedAlign += 360;
+
+        // We want T such that T > targetMin AND T % 360 == normalizedAlign
+        // T = k * 360 + normalizedAlign
+
+        let targetRotation = targetMin - (targetMin % 360) + normalizedAlign;
+        if (targetRotation < targetMin) targetRotation += 360; // Ensure we go forward
 
         rotation.value = withTiming(targetRotation, {
-            duration: 6500, // Slower, more elegant
-            easing: Easing.out(Easing.cubic), // Smooth landing
+            duration: 5000,
+            easing: Easing.out(Easing.cubic),
         }, (finished) => {
             if (finished) {
                 runOnJS(handleSpinEnd)(wonPrize);
@@ -248,6 +348,21 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
                             {result?.type === 'WIN' ? 'Congratulations' : 'Better Luck Next Time'}
                         </Text>
 
+                        {/* Business Branding */}
+                        {result?.type === 'WIN' && result?.business && (
+                            <View style={styles.businessContainer}>
+                                <Image
+                                    source={{ uri: result.business.logo || undefined }}
+                                    style={styles.businessLogo}
+                                    contentFit="cover"
+                                />
+                                <View style={{ alignItems: 'center' }}>
+                                    <Text style={styles.businessName}>{result.business.businessName}</Text>
+                                    <Text style={styles.businessCity}>📍 {result.business.city}</Text>
+                                </View>
+                            </View>
+                        )}
+
                         <Text style={styles.resultName}>
                             {result?.name}
                         </Text>
@@ -297,15 +412,24 @@ export default function SpinWheel({ visible, onClose }: { visible: boolean, onCl
 
                         {/* Controls */}
                         {!loading && !apiError && !showResultModal && (
-                            <TouchableOpacity
-                                onPress={handleSpin}
-                                disabled={spinning}
-                                style={[styles.spinButton, spinning && { opacity: 0.8 }]}
-                            >
-                                <Text style={styles.spinButtonText}>
-                                    {spinning ? 'Spinning...' : 'SPIN NOW'}
-                                </Text>
-                            </TouchableOpacity>
+                            <View>
+                                {nextSpin ? (
+                                    <View style={styles.cooldownContainer}>
+                                        <Text style={styles.cooldownTitle}>Next Free Spin In</Text>
+                                        <Text style={styles.cooldownTime}>{timeLeft}</Text>
+                                    </View>
+                                ) : (
+                                    <TouchableOpacity
+                                        onPress={handleSpin}
+                                        disabled={spinning}
+                                        style={[styles.spinButton, spinning && { opacity: 0.8 }]}
+                                    >
+                                        <Text style={styles.spinButtonText}>
+                                            {spinning ? 'Spinning...' : 'SPIN NOW'}
+                                        </Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
                         )}
                     </View>
                 )}
@@ -484,5 +608,56 @@ const styles = StyleSheet.create({
     retryText: {
         color: COLORS.RED,
         fontWeight: 'bold',
+    },
+    cooldownContainer: {
+        backgroundColor: 'rgba(255,255,255,0.15)',
+        paddingVertical: 16,
+        paddingHorizontal: 32,
+        borderRadius: 20,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)'
+    },
+    cooldownTitle: {
+        color: 'rgba(255,255,255,0.7)',
+        fontSize: 12,
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        marginBottom: 4,
+        letterSpacing: 1
+    },
+    cooldownTime: {
+        color: COLORS.WHITE,
+        fontSize: 24,
+        fontWeight: '900',
+        fontVariant: ['tabular-nums']
+    },
+    businessContainer: {
+        alignItems: 'center',
+        marginVertical: 12,
+        padding: 12,
+        backgroundColor: '#f8f9fa',
+        borderRadius: 16,
+        width: '100%'
+    },
+    businessLogo: {
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        marginBottom: 8,
+        borderWidth: 2,
+        borderColor: '#fff',
+        backgroundColor: '#eee'
+    },
+    businessName: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: COLORS.NAVY,
+    },
+    businessCity: {
+        fontSize: 12,
+        color: '#64748b',
+        fontWeight: '600',
+        marginTop: 2
     }
 });

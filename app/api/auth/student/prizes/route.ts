@@ -15,24 +15,37 @@ export async function GET(req: Request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        try {
-            jwt.verify(token, JWT_SECRET);
-        } catch (e) {
-            return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+        // 2. Fetch User Status for Cooldown
+        const decoded: any = jwt.verify(token, JWT_SECRET);
+        const student = await prisma.student.findUnique({
+            where: { id: decoded.id },
+            select: { lastSpinAt: true }
+        });
+
+        let nextSpinTime = null;
+        if (student?.lastSpinAt) {
+            nextSpinTime = new Date(new Date(student.lastSpinAt).getTime() + (12 * 60 * 60 * 1000));
         }
 
-        // 2. Fetch Prizes
+        // 3. Fetch Prizes
         // We only return ACTIVE prizes (active = stock > 0, or -1 for infinite).
-        // This ensures the frontend wheel only displays items that can actually be won.
         const prizes = await prisma.spinPrize.findMany({
             where: {
                 quantity: { not: 0 }
             },
-            orderBy: { weight: 'desc' }
+            orderBy: { weight: 'desc' },
+            include: {
+                business: {
+                    select: {
+                        businessName: true,
+                        logo: true,
+                        city: true
+                    }
+                }
+            }
         });
 
-        // Map to a cleaner format if needed, but raw is fine.
-        return NextResponse.json({ success: true, prizes });
+        return NextResponse.json({ success: true, prizes, nextSpinTime });
 
     } catch (error) {
         console.error("Get Prizes Error:", error);

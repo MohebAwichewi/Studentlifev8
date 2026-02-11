@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { View, Text, StyleSheet, Dimensions, Modal, ScrollView, TouchableOpacity, TextInput, Platform, StatusBar, Keyboard, Alert } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, Modal, ScrollView, TouchableOpacity, TextInput, Platform, StatusBar, Keyboard, Alert, FlatList } from 'react-native';
 import MapView, { PROVIDER_GOOGLE, Marker, Circle, Callout } from 'react-native-maps';
 import ClusteredMapView from 'react-native-map-clustering';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -75,6 +75,15 @@ function MapScreenContent() {
     const router = useRouter();
     const params = useLocalSearchParams();
 
+    // PERFORMANCE: Debounce search query to prevent filtering on every keystroke
+    const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedQuery(searchQuery);
+        }, 400); // 400ms debounce
+        return () => clearTimeout(handler);
+    }, [searchQuery]);
+
     // --- Data Fetching ---
     const { data: businessesData, refetch, isRefetching } = useQuery({
         queryKey: ['map-businesses'],
@@ -104,10 +113,10 @@ function MapScreenContent() {
     // --- Filtering Logic ---
     const filteredBusinesses = useMemo(() => {
         return businesses.filter((b: any) => {
-            // 1. Text Search
+            // 1. Text Search (Use debounced query)
             let matchesSearch = true;
-            if (searchQuery) {
-                const query = searchQuery.toLowerCase();
+            if (debouncedQuery) {
+                const query = debouncedQuery.toLowerCase();
                 matchesSearch = (
                     b.businessName.toLowerCase().includes(query) ||
                     (b.category && b.category.toLowerCase().includes(query)) ||
@@ -129,70 +138,29 @@ function MapScreenContent() {
 
             return matchesSearch && matchesRadius;
         });
-    }, [businesses, searchQuery, filterLocation, filterRadius]);
+    }, [businesses, debouncedQuery, filterLocation, filterRadius]);
 
-    // --- Camera & Zoom Logic ---
-    const autoZoomToRadius = useCallback((loc: { latitude: number, longitude: number }, radiusKm: number) => {
+    // --- Camera & Zoom Logic (ULTRA-LIGHTWEIGHT - NO ANIMATIONS) ---
+    const setMapRegion = useCallback((loc: { latitude: number, longitude: number }, radiusKm: number) => {
         if (!mapRef.current) return;
 
-        // Calculate Bounding Box for the Circle
-        // 1 degree latitude ≈ 111 km (constant globally)
-        // For the circle to be visible, we need to show the diameter (2 * radius)
-        const latDelta = (radiusKm * 2.4) / 111; // 2.4 = diameter (2x) + 20% padding
-
-        // Longitude degrees vary by latitude, but for simplicity we use aspect ratio
+        // Calculate region WITHOUT animation for instant load
+        const latDelta = (radiusKm * 2.4) / 111;
         const aspect = width / height;
         const lonDelta = latDelta * aspect;
 
-        mapRef.current.animateToRegion({
-            latitude: loc.latitude,
-            longitude: loc.longitude,
-            latitudeDelta: latDelta,
-            longitudeDelta: lonDelta,
-        }, 1000);
+        // Use setCamera for instant positioning (no animation)
+        mapRef.current.setCamera({
+            center: { latitude: loc.latitude, longitude: loc.longitude },
+            zoom: 12,
+        }, { duration: 0 }); // 0 duration = instant, no animation
     }, []);
 
-    // Auto-zoom when location or radius changes
-    useEffect(() => {
-        if (filterLocation && mapRef.current) {
-            autoZoomToRadius(filterLocation, filterRadius);
-        }
-    }, [filterLocation, filterRadius, autoZoomToRadius]);
+    // REMOVED: Auto-zoom effect to prevent crashes
+    // Map loads instantly at default zoom, no automatic camera movements
 
-    // --- Auto-Handle Empty State ---
-    useEffect(() => {
-        if (businesses.length > 0 && filteredBusinesses.length === 0 && filterLocation) {
-            // No deals found in radius -> Find Nearest
-            let minDist = Infinity;
-            let nearest = null;
-
-            businesses.forEach((b: any) => {
-                const dist = getDistanceFromLatLonInKm(
-                    filterLocation.latitude, filterLocation.longitude,
-                    b.latitude, b.longitude
-                );
-                if (dist < minDist) {
-                    minDist = dist;
-                    nearest = b;
-                }
-            });
-
-            if (nearest && minDist > filterRadius) {
-                // User Requirement: "Automatically Zoom Out to find the nearest available deal"
-                // We must update the radius state so the pins actually appear in the filtered list
-                const proposedRadius = Math.ceil(minDist / 5) * 5; // Round up to next 5km
-
-                // Prevent infinite loops or excessive jumps (cap at 100km)
-                if (proposedRadius <= 100 && proposedRadius !== filterRadius) {
-                    setFilterRadius(proposedRadius);
-                    autoZoomToRadius(filterLocation, proposedRadius);
-                    // The banner below will show "No deals in X km..." based on the previous state? 
-                    // No, it handles the *transition*.
-                    // Actually, let's show a robust Toast or let the UI reflect the change.
-                }
-            }
-        }
-    }, [filteredBusinesses.length, filterLocation, businesses]);
+    // REMOVED: Auto-Handle Empty State effect to reduce processing
+    // This was causing unnecessary re-renders and calculations
 
     // --- Effects ---
 
@@ -222,7 +190,7 @@ function MapScreenContent() {
             const newLoc = { latitude: loc.coords.latitude, longitude: loc.coords.longitude };
 
             setFilterLocation(newLoc);
-            autoZoomToRadius(newLoc, filterRadius); // Zoom to current radius at new location
+            // NO auto-zoom - let map load instantly
         } catch (error) {
             Alert.alert("Error", "Could not fetch location.");
         } finally {
@@ -247,7 +215,7 @@ function MapScreenContent() {
                 const newLoc = { latitude, longitude };
 
                 setFilterLocation(newLoc);
-                autoZoomToRadius(newLoc, filterRadius); // Fit to new city
+                setMapRegion(newLoc, filterRadius); // Fit to new city
                 setCitySearch('');
             } else {
                 Alert.alert("Not Found", "City not found.");
@@ -257,10 +225,36 @@ function MapScreenContent() {
         }
     };
 
-    const handleMarkerPress = (business: any) => {
+    const handleMarkerPress = useCallback((business: any) => {
         setSelectedBusiness(business);
         setShowDeals(true);
-    };
+    }, []); // Stable callback
+
+    // PERFORMANCE: Memoize cluster rendering
+    const renderCluster = useCallback((cluster: any) => {
+        const { id, geometry, properties } = cluster;
+        const points = properties.point_count;
+        return (
+            <Marker
+                key={`cluster-${id}`}
+                coordinate={{ latitude: geometry.coordinates[1], longitude: geometry.coordinates[0] }}
+                tracksViewChanges={false} // CRITICAL: Prevent re-rendering static clusters
+                tracksInfoWindowChanges={false}
+            >
+                <View className="bg-red-600 w-10 h-10 rounded-full items-center justify-center border-2 border-white shadow-md">
+                    <Text className="text-white font-bold text-xs">{points}</Text>
+                </View>
+            </Marker>
+        );
+    }, []);
+
+    // PERFORMANCE: Memoize map padding to prevent re-renders
+    const mapPadding = useMemo(() => ({
+        top: 80,
+        bottom: showFilterSheet ? SHEET_MAX_HEIGHT - 20 : 20,
+        left: 0,
+        right: 0
+    }), [showFilterSheet]);
 
     // --- Render ---
 
@@ -303,36 +297,28 @@ function MapScreenContent() {
                         rotateEnabled={true}
 
                         // Padding to avoid UI covering markers (Filter Sheet)
-                        mapPadding={{
-                            top: 80, // Header space
-                            bottom: showFilterSheet ? SHEET_MAX_HEIGHT - 20 : 20,
-                            left: 0,
-                            right: 0
-                        }}
+                        mapPadding={mapPadding}
+
+                        // Native User Location (Stable, prevents clustering)
+                        showsUserLocation={true}
+                        showsMyLocationButton={false} // We have our own button
+
+                        // Performance: Optimization settings
+                        extent={512} // Increase tile size for fewer clusters (better perf)
+                        nodeSize={64} // Increase node size (default 64)
+                        minPoints={3} // Only cluster if 3+ items
+                        animationEnabled={false} // Disable cluster animations
+                        preserveClusterPressBehavior={true} // Don't re-render on press
 
                         clusterColor="#E63946"
-                        renderCluster={(cluster: any) => {
-                            const { id, geometry, properties } = cluster;
-                            const points = properties.point_count;
-                            return (
-                                <Marker
-                                    key={`cluster-${id}`}
-                                    coordinate={{ latitude: geometry.coordinates[1], longitude: geometry.coordinates[0] }}
-                                    tracksViewChanges={false}
-                                >
-                                    <View className="bg-red-600 w-10 h-10 rounded-full items-center justify-center border-2 border-white shadow-md">
-                                        <Text className="text-white font-bold text-xs">{points}</Text>
-                                    </View>
-                                </Marker>
-                            );
-                        }}
+                        renderCluster={renderCluster}
                     >
                         {/* 1. Markers */}
                         {filteredBusinesses.map((business: any) => (
                             <CustomMarker
                                 key={business.id}
                                 business={business}
-                                onPress={() => handleMarkerPress(business)}
+                                onSelect={handleMarkerPress} // Pass stable callback
                             />
                         ))}
 
@@ -348,12 +334,7 @@ function MapScreenContent() {
                             />
                         )}
 
-                        {/* 3. User Location Marker */}
-                        {filterLocation && (
-                            <Marker coordinate={filterLocation} zIndex={2}>
-                                <View className='bg-blue-500 w-4 h-4 rounded-full border-2 border-white shadow-sm' />
-                            </Marker>
-                        )}
+                        {/* 3. User Location Marker REMOVED - Using native showsUserLocation instead */}
                     </ClusteredMapView>
 
                     {/* Empty State Banner (Floating) */}
@@ -361,12 +342,93 @@ function MapScreenContent() {
                         <View className="absolute top-40 left-4 right-4 bg-slate-900/90 p-4 rounded-xl flex-row items-center justify-center gap-3 animate-in fade-in" pointerEvents="none">
                             <Ionicons name="search" size={20} color="#cbd5e1" />
                             <Text className="text-white font-bold text-sm">
-                                No deals in {filterRadius}km. Zooming out...
+                                No deals found in {filterRadius}km radius.
                             </Text>
                         </View>
                     )}
                 </View>
             )}
+
+            {/* --- LIST VIEW --- */}
+            {viewMode === 'list' && (
+                <SafeAreaView style={styles.listContainer} edges={['bottom']}>
+                    <FlatList
+                        data={filteredBusinesses}
+                        keyExtractor={(item) => item.id.toString()}
+                        contentContainerStyle={{
+                            paddingTop: Platform.OS === 'ios' ? 140 : 130,
+                            paddingHorizontal: 16,
+                            paddingBottom: showFilterSheet ? SHEET_MAX_HEIGHT + 20 : 100
+                        }}
+                        renderItem={({ item: business }) => (
+                            <TouchableOpacity
+                                onPress={() => handleMarkerPress(business)}
+                                className="bg-white rounded-2xl mb-4 overflow-hidden border border-slate-100 shadow-sm"
+                            >
+                                <View className="p-4">
+                                    <View className="flex-row items-start justify-between mb-2">
+                                        <View className="flex-1">
+                                            <Text className="text-lg font-black text-slate-900 mb-1" numberOfLines={1}>
+                                                {business.businessName}
+                                            </Text>
+                                            {business.category && (
+                                                <View className="flex-row items-center gap-1">
+                                                    <Ionicons name="pricetag" size={12} color="#64748b" />
+                                                    <Text className="text-xs font-bold text-slate-500">
+                                                        {business.category}
+                                                    </Text>
+                                                </View>
+                                            )}
+                                        </View>
+                                        {filterLocation && (
+                                            <View className="bg-red-50 px-3 py-1 rounded-full">
+                                                <Text className="text-xs font-black text-red-600">
+                                                    {getDistanceFromLatLonInKm(
+                                                        filterLocation.latitude,
+                                                        filterLocation.longitude,
+                                                        business.latitude,
+                                                        business.longitude
+                                                    ).toFixed(1)} km
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {business.deals && business.deals.length > 0 && (
+                                        <View className="mt-3 pt-3 border-t border-slate-100">
+                                            <View className="flex-row items-center gap-2">
+                                                <Ionicons name="gift" size={14} color="#E63946" />
+                                                <Text className="text-xs font-bold text-slate-600">
+                                                    {business.deals.length} {business.deals.length === 1 ? 'Deal' : 'Deals'} Available
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    )}
+                                </View>
+                            </TouchableOpacity>
+                        )}
+                        ListEmptyComponent={() => (
+                            <View className="items-center justify-center py-20">
+                                <Ionicons name="search" size={48} color="#cbd5e1" />
+                                <Text className="text-slate-400 font-bold mt-4 text-center">
+                                    No businesses found in {filterRadius}km radius
+                                </Text>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        setFilterRadius(20);
+                                        setSearchQuery('');
+                                    }}
+                                    className="mt-4 bg-slate-900 px-6 py-3 rounded-xl"
+                                >
+                                    <Text className="text-white font-bold">Reset Filters</Text>
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                        showsVerticalScrollIndicator={false}
+                    />
+                </SafeAreaView>
+            )}
+
 
             {/* --- TOP UI LAYERS (Z-Index > 10) --- */}
 
@@ -456,7 +518,7 @@ function MapScreenContent() {
                             }}
                             onSlidingComplete={(val) => {
                                 // Smart Zoom on release
-                                if (filterLocation) autoZoomToRadius(filterLocation, val);
+                                if (filterLocation) setMapRegion(filterLocation, val);
                             }}
                             minimumTrackTintColor="#E63946"
                             maximumTrackTintColor="#e2e8f0"
@@ -491,14 +553,15 @@ function MapScreenContent() {
             {(!showFilterSheet && viewMode === 'map') && (
                 <TouchableOpacity
                     onPress={() => {
-                        if (filterLocation) autoZoomToRadius(filterLocation, filterRadius);
+                        if (filterLocation) setMapRegion(filterLocation, filterRadius);
                         else handleUseCurrentLocation();
                     }}
                     style={styles.fab}
                 >
                     <Ionicons name="locate" size={24} color="#E63946" />
                 </TouchableOpacity>
-            )}
+            )
+            }
 
             {/* --- DEALS MODAL --- */}
             <Modal
@@ -531,7 +594,7 @@ function MapScreenContent() {
                     </View>
                 </View>
             </Modal>
-        </View>
+        </View >
     );
 }
 
@@ -539,6 +602,10 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#fff',
+    },
+    listContainer: {
+        flex: 1,
+        backgroundColor: '#f8fafc',
     },
     topBar: {
         position: 'absolute',

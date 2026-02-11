@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StatusBar, Dimensions } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
+import BusinessLocationMap from '../../components/BusinessLocationMap';
 import { useQuery } from '@tanstack/react-query';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
@@ -120,30 +120,20 @@ export default function BusinessProfile() {
                             {/* Location Map */}
                             {latitude && longitude && (
                                 <View className="mt-6 rounded-2xl overflow-hidden border border-slate-200">
-                                    <MapView
-                                        style={{ width: '100%', height: 180 }}
-                                        initialRegion={{
-                                            latitude: parseFloat(latitude as string),
-                                            longitude: parseFloat(longitude as string),
-                                            latitudeDelta: 0.01,
-                                            longitudeDelta: 0.01,
-                                        }}
-                                        scrollEnabled={false}
-                                        liteMode={true} // Performance optimization
-                                    >
-                                        <Marker
-                                            coordinate={{
-                                                latitude: parseFloat(latitude as string),
-                                                longitude: parseFloat(longitude as string),
-                                            }}
-                                            title={businessName}
-                                        />
-                                    </MapView>
-                                    <View className="bg-slate-50 p-3 flex-row items-center gap-2">
-                                        <FontAwesome5 name="map-marker-alt" size={12} color="#64748b" />
-                                        <Text className="text-xs text-slate-500 font-bold" numberOfLines={1}>
-                                            {address || "Business Location"}
-                                        </Text>
+                                    <View className="mt-6 rounded-2xl overflow-hidden border border-slate-200">
+                                        <View style={{ width: '100%', height: 180 }}>
+                                            <BusinessLocationMap
+                                                latitude={parseFloat(latitude as string)}
+                                                longitude={parseFloat(longitude as string)}
+                                                title={businessName}
+                                            />
+                                        </View>
+                                        <View className="bg-slate-50 p-3 flex-row items-center gap-2">
+                                            <FontAwesome5 name="map-marker-alt" size={12} color="#64748b" />
+                                            <Text className="text-xs text-slate-500 font-bold" numberOfLines={1}>
+                                                {address || "Business Location"}
+                                            </Text>
+                                        </View>
                                     </View>
                                 </View>
                             )}
