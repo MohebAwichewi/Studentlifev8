@@ -114,7 +114,7 @@ export default function HomeScreen() {
     });
 
     // Client-side radius filtering with fallback
-    const { deals, isFallback } = React.useMemo(() => {
+    const { deals, isFallback } = useMemo(() => {
         if (!allDeals || !filterLocation) return { deals: [], isFallback: false };
 
         // Calculate distance for each deal

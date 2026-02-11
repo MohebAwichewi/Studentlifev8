@@ -14,7 +14,14 @@ const nextConfig = {
     ],
   },
 
-
+  // ✅ Exclude mobile folder from webpack compilation
+  webpack: (config, { isServer }) => {
+    config.watchOptions = {
+      ...config.watchOptions,
+      ignored: ['**/mobile/**', '**/node_modules/**'],
+    };
+    return config;
+  },
 
   typescript: {
     ignoreBuildErrors: true,
