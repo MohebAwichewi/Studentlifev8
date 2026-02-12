@@ -241,6 +241,10 @@ export default function LandingPage() {
         <div className="p-5 border-t border-slate-100">
           {/* Legal Links */}
           <div className="flex justify-center gap-4 mb-3">
+            <Link href="/about" className="text-xs text-slate-400 hover:text-slate-600 font-bold transition">
+              About
+            </Link>
+            <span className="text-slate-300">|</span>
             <Link href="/privacy-policy" className="text-xs text-slate-400 hover:text-slate-600 font-bold transition">
               Privacy Policy
             </Link>

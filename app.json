@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "5e3949d8-f3d0-48c0-8b23-c51a78d72662"
+      }
+    },
+    "android": {
+      "package": "com.moe.studentlife"
+    }
+  }
+}
