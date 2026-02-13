@@ -54,17 +54,14 @@ export async function POST(req: Request) {
         image: image || null,
         // Legacy String Field (Required) - Use first category name or "General"
         category: category || "General",
-<<<<<<< HEAD
         expiry: expiry || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(), // Default 1 year if empty
         isActive: true, // ✅ Immediate Visibility
-=======
         // New Relation
         categories: {
           connect: categoryIds.map((id: any) => ({ id: Number(id) }))
         },
         expiry: expiry || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
         status: 'ACTIVE',
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         isMultiUse: true
       }
     })

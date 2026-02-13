@@ -11,10 +11,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-<<<<<<< HEAD
   title: "WIN",
   description: "Spend less, Live more.",
-=======
   metadataBase: new URL('https://student.life'),
   title: {
     default: "Student.LIFE | Exclusive Student Discounts & Offers",
@@ -62,7 +60,6 @@ export const metadata: Metadata = {
   verification: {
     google: "r-NDbk6OSlOs02Bb7UHmWQxPKa1RRVt5B8JgcEtuJds",
   },
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 };
 
 export default function RootLayout({

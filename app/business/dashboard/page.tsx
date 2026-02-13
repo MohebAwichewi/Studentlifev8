@@ -55,7 +55,6 @@ interface AudienceData {
     universities: { name: string, percent: number }[]
 }
 
-<<<<<<< HEAD
 // --- HELPER COMPONENTS ---
 function Toast({ message, type, onClose }: { message: string, type: 'success' | 'error', onClose: () => void }) {
     useEffect(() => {
@@ -75,9 +74,7 @@ function Toast({ message, type, onClose }: { message: string, type: 'success' | 
         </div>
     )
 }
-=======
 
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
 function SidebarItem({ icon, label, active, onClick }: { icon: string, label: string, active: boolean, onClick: () => void }) {
     return (
@@ -135,11 +132,9 @@ function DashboardContent() {
     const [stats, setStats] = useState({ reach: 0, clicks: 0, redemptions: 0 })
     const [subscription, setSubscription] = useState<SubscriptionData | null>(null)
 
-<<<<<<< HEAD
     // UI State
     const [filterStatus, setFilterStatus] = useState('ALL')
     const [showModal, setShowModal] = useState(false)
-=======
     // Trial State
     const [daysLeft, setDaysLeft] = useState(0)
     const [isTrialActive, setIsTrialActive] = useState(true)
@@ -178,7 +173,6 @@ function DashboardContent() {
         categoryIds: [] as string[], // ✅ Added Category IDs for Multi-Select
         redemptionMethod: 'SWIPE_SINGLE' as 'SWIPE_SINGLE' | 'SWIPE_MULTI' | 'CODE_SINGLE'
     })
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     const [creatingDeal, setCreatingDeal] = useState(false)
 
     // Forms
@@ -198,12 +192,10 @@ function DashboardContent() {
 
         if (!isLogged) {
             router.push('/business/login')
-<<<<<<< HEAD
             return
         } else if (status === 'PENDING') {
             router.push('/business/pending') // Redirect if pending
             return
-=======
         } else {
             setBusinessName(name || 'Partner')
             setBusinessId(id)
@@ -387,14 +379,12 @@ function DashboardContent() {
             finalDiscountValue = dealForm.discountType === 'PERCENTAGE'
                 ? `${dealForm.discountAmount}%`
                 : `£${dealForm.discountAmount}`;
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         }
 
         const id = localStorage.getItem('businessId')
         const name = localStorage.getItem('businessName') || 'Partner'
         if (!id) { router.push('/business/login'); return; } // This check might be redundant if isLogged covers it, but keeping for robustness
 
-<<<<<<< HEAD
         setBusinessId(id)
         setBusinessName(name)
         setLoading(false)
@@ -426,7 +416,6 @@ function DashboardContent() {
     const handleDeleteDeal = async (id: number) => {
         // ... (Keep existing Logic)
         setDeals(deals.filter(d => d.id !== id))
-=======
         // Legacy Fallback: Use the name of the first selected category
         const firstCatId = dealForm.categoryIds[0];
         const firstCat = categories.find(c => c.id.toString() === firstCatId) || { name: 'General' };
@@ -476,7 +465,6 @@ function DashboardContent() {
         } finally {
             setCreatingDeal(false)
         }
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     }
 
     // --- RENDER ---
@@ -528,12 +516,10 @@ function DashboardContent() {
                             </h1>
                             <p className="text-slate-500 font-medium mt-1">Welcome back, {businessName}</p>
                         </div>
-<<<<<<< HEAD
                         <div className="flex gap-4">
                             <button
                                 onClick={() => setActiveTab('notifications')}
                                 className={`w-12 h-12 rounded-full border border-slate-200 flex items-center justify-center transition ${activeTab === 'notifications' ? 'bg-slate-900 text-white' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
-=======
                     </div>
                 )}
 
@@ -696,7 +682,6 @@ function DashboardContent() {
                             <stripe-pricing-table
                                 pricing-table-id="prctbl_1SlTmNIXjVTkZU2iJxgUa5DF"
                                 publishable-key="pk_test_51SlG3oIXjVTkZU2iethTPDJYPTg2lpbjxzY4X9zgyRFpxv5oHhJ0WRsAj0nxC8J9E2KjQcvObViifBLN3JgqaBTj00iZoNHDYp"
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
                             >
                                 <i className="fa-solid fa-bell"></i>
                             </button>
@@ -756,9 +741,7 @@ function DashboardContent() {
                 )}
 
                 {activeTab === 'settings' && (
-<<<<<<< HEAD
                     <SettingsTab businessId={businessId} />
-=======
                     <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {/* PREVIEW CONTAINER */}
                         <div className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-sm">
@@ -858,7 +841,6 @@ function DashboardContent() {
                             <button onClick={handleDeleteAccount} className="text-red-400 text-xs font-bold hover:text-red-600 underline">Delete Account Permanently</button>
                         </div>
                     </div>
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
                 )}
 
             </main>
@@ -866,12 +848,10 @@ function DashboardContent() {
             {/* CREATE DEAL MODAL (Could be extracted too) */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-<<<<<<< HEAD
                     <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl">
                         <h2 className="text-2xl font-black mb-4">Create Deal (Step 1)</h2>
                         {/* ... Form Content ... */}
                         <button onClick={() => setShowModal(false)} className="text-red-500 font-bold">Close</button>
-=======
                     <div className="bg-white rounded-3xl p-8 w-full max-w-lg shadow-2xl scale-100 animate-in zoom-in-95 duration-200 overflow-y-auto max-h-[90vh]">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-black text-slate-900">Create New Deal</h2>
@@ -1063,7 +1043,6 @@ function DashboardContent() {
                                 <button type="submit" disabled={creatingDeal} className="w-full bg-[#FF3B30] text-white font-bold py-4 rounded-xl hover:bg-[#d63026] transition shadow-lg shadow-red-200 flex justify-center">{creatingDeal ? <i className="fa-solid fa-circle-notch fa-spin"></i> : 'Publish Deal'}</button>
                             </div>
                         </form>
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
                     </div>
                 </div>
             )}

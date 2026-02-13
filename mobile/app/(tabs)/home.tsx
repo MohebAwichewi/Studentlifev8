@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, TextInput, TouchableOpacity, Image, FlatList, ActivityIndicator, RefreshControl, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -170,7 +169,6 @@ export default function HomeScreen() {
 
             </ScrollView>
         </SafeAreaView>
-=======
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, TouchableOpacity, RefreshControl, ActivityIndicator, TextInput, Dimensions, ScrollView, FlatList, Image as RNImage } from 'react-native';
 import { Image } from 'expo-image';
@@ -493,6 +491,5 @@ export default function HomeScreen() {
             <NoSpinPopup visible={showNoSpinPopup} onClose={() => setShowNoSpinPopup(false)} />
 
         </SafeAreaView >
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     );
 }

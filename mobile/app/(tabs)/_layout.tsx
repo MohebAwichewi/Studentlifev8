@@ -24,7 +24,6 @@ export default function TabLayout() {
       tabBarLabelStyle: { fontWeight: 'bold', fontSize: 10 }
     }}>
       <Tabs.Screen name="index" options={{ href: null }} />
-<<<<<<< HEAD
       <Tabs.Screen
         name="wallet"
         options={{
@@ -32,9 +31,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <FontAwesome5 name="wallet" size={20} color={color} />,
         }}
       />
-=======
       <Tabs.Screen name="deals" options={{ href: null }} />
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
       <Tabs.Screen
         name="home"
         options={{

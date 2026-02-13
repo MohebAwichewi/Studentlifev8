@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, FlatList, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
@@ -172,7 +171,6 @@ export default function NotificationsScreen() {
                 <View className="w-2 h-2 rounded-full bg-blue-500 absolute top-4 right-4" />
             )}
         </TouchableOpacity>
-=======
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Image, RefreshControl, ActivityIndicator } from 'react-native';
 import { useRouter, Stack, useFocusEffect } from 'expo-router';
@@ -198,7 +196,6 @@ export default function NotificationsScreen() {
         React.useCallback(() => {
             refetch();
         }, [])
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     );
 
     return (
@@ -206,7 +203,6 @@ export default function NotificationsScreen() {
             <Stack.Screen options={{ headerShown: false }} />
 
             {/* Header */}
-<<<<<<< HEAD
             <View className="px-6 py-4 flex-row items-center justify-between border-b border-slate-100 bg-white z-10">
                 <View className="flex-row items-center">
                     <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full bg-slate-50 mr-4">
@@ -250,7 +246,6 @@ export default function NotificationsScreen() {
                     </Text>
                 </View>
             )}
-=======
             <View className="px-6 py-4 flex-row items-center border-b border-slate-100">
                 <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center rounded-full bg-slate-50 mr-4">
                     <FontAwesome5 name="arrow-left" size={16} color="#0f172a" />
@@ -297,7 +292,6 @@ export default function NotificationsScreen() {
                 )}
                 <View className="h-20" />
             </ScrollView>
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         </SafeAreaView>
     );
 }

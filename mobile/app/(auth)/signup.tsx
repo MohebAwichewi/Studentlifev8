@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, SafeAreaView, Modal, FlatList, Image } from 'react-native';
 import { useRouter, Link } from 'expo-router';
@@ -12,7 +11,6 @@ const TUNISIAN_CITIES = [
     "Bizerte", "Béja", "Jendouba", "Kef", "Siliana", "Kairouan",
     "Kasserine", "Sidi Bouzid", "Sousse", "Monastir", "Mahdia",
     "Sfax", "Gafsa", "Tozeur", "Kebili", "Gabès", "Medenine", "Tataouine"
-=======
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, Modal, FlatList, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -129,12 +127,10 @@ const UK_UNIVERSITIES = [
     "University of York",
     "York St John University",
     "Other"
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 ];
 
 export default function SignupScreen() {
     const [form, setForm] = useState({
-<<<<<<< HEAD
         email: '',
         password: '',
         firstName: '',
@@ -175,7 +171,6 @@ export default function SignupScreen() {
     const handleSignup = async () => {
         if (!isFormValid()) {
             Alert.alert("Incomplete Form", "Please fill in all fields and accept the terms.");
-=======
         email: '', password: '', firstName: '', lastName: '', university: ''
     });
     const [image, setImage] = useState<string | null>(null);
@@ -210,7 +205,6 @@ export default function SignupScreen() {
 
         if (!image && !isUniEmail) {
             showNotification('error', "Verification Required", "Access Denied. You must use a valid university email (.ac.uk, .edu, .tn) or upload your Student ID.");
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
             return;
         }
 
@@ -221,7 +215,6 @@ export default function SignupScreen() {
             formData.append('password', form.password);
             formData.append('firstName', form.firstName);
             formData.append('lastName', form.lastName);
-<<<<<<< HEAD
             formData.append('city', form.city);
             // Defaulting university to city for back-compat if needed, or send empty if backend allows.
             // Assuming backend expects 'university' field, we'll send city there or a placeholder if required.
@@ -229,24 +222,18 @@ export default function SignupScreen() {
             formData.append('university', 'Other');
             formData.append('dob', form.dob);
             formData.append('phone', form.phone);
-=======
             formData.append('university', form.university);
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
             formData.append('fullName', `${form.firstName} ${form.lastName}`);
 
             if (image) {
                 const filename = image.split('/').pop();
                 const match = /\.(\w+)$/.exec(filename || '');
                 const type = match ? `image/${match[1]}` : `image`;
-<<<<<<< HEAD
-=======
 
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
                 // @ts-ignore
                 formData.append('idImage', { uri: image, name: filename, type });
             }
 
-<<<<<<< HEAD
             const res = await api.post('/auth/user/signup', formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
@@ -260,7 +247,6 @@ export default function SignupScreen() {
         } catch (error: any) {
             console.error(error);
             Alert.alert("Error", error.response?.data?.error || "Network Error");
-=======
             const res = await api.post('/auth/student/signup', formData, {
                 headers: {
                     'Accept': 'application/json',
@@ -280,7 +266,6 @@ export default function SignupScreen() {
         } catch (error: any) {
 
             showNotification('error', "Error", error.response?.data?.error || "Network Error");
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         } finally {
             setLoading(false);
         }
@@ -288,7 +273,6 @@ export default function SignupScreen() {
 
     return (
         <SafeAreaView className="flex-1 bg-white">
-<<<<<<< HEAD
             <ScrollView className="px-8 pt-6" contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
 
                 {/* Header */}
@@ -491,7 +475,6 @@ export default function SignupScreen() {
                                         {item}
                                     </Text>
                                     {form.city === item && <FontAwesome5 name="check" size={14} color="#ef4444" />}
-=======
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                 <ScrollView className="px-8 pt-8" contentContainerStyle={{ paddingBottom: 40 }}>
                     <View className="mb-8">
@@ -596,17 +579,13 @@ export default function SignupScreen() {
                                     <Text className={`text-lg ${form.university === item ? 'font-bold text-blue-600' : 'text-slate-700'}`}>
                                         {item}
                                     </Text>
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
                                 </TouchableOpacity>
                             )}
                         />
                     </View>
                 </View>
             </Modal>
-<<<<<<< HEAD
         </SafeAreaView>
-=======
         </SafeAreaView >
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     );
 }

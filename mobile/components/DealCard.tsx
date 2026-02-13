@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
-<<<<<<< HEAD
 import { View, Text, Image, TouchableOpacity, Dimensions } from 'react-native';
 import { Link } from 'expo-router';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-=======
 import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { FontAwesome5, Ionicons } from '@expo/vector-icons';
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
 interface Deal {
     id: number;
@@ -18,17 +15,13 @@ interface Deal {
     discountValue: string;
     image: string;
     category: string;
-<<<<<<< HEAD
-=======
     expiry?: string; // Added field
     redemptionType?: string; // Added field
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     isMultiUse?: boolean;
     business: {
         businessName: string;
         logo: string;
         coverPhoto?: string;
-<<<<<<< HEAD
     };
     lastRedemption?: string; // ISO Date string
 }
@@ -160,7 +153,6 @@ export default function DealCard({ deal }: { deal: Deal }) {
                 {CardContent}
             </TouchableOpacity>
         </Link>
-=======
         latitude?: number;
         longitude?: number;
     };
@@ -272,6 +264,5 @@ export default function DealCard({ deal, userLocation }: {
                 </View>
             </View>
         </TouchableOpacity>
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     );
 }

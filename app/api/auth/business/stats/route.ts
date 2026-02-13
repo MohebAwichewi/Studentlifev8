@@ -18,7 +18,6 @@ export async function POST(req: Request) {
     const reach = deals.reduce((acc, d) => acc + (d.views || 0), 0)
     const redemptions = deals.reduce((acc, d) => acc + (d.claimed || 0), 0)
     const clicks = deals.reduce((acc, d) => acc + (d.clicks || 0), 0)
-<<<<<<< HEAD
 
     // Recent Redemptions
     const recentActivity = await prisma.redemption.findMany({
@@ -37,8 +36,6 @@ export async function POST(req: Request) {
       deal: r.deal.title,
       time: r.createdAt
     }))
-=======
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
     return NextResponse.json({
       success: true,

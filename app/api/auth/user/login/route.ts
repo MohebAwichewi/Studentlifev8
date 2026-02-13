@@ -30,17 +30,14 @@ export async function POST(req: Request) {
     }
 
     // 3. Success (Generate Token)
-<<<<<<< HEAD:app/api/auth/user/login/route.ts
     const { password: _, ...userProfile } = user
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: 'user' },
-=======
     const { password: _, ...studentProfile } = student
 
     const token = jwt.sign(
       { id: student.id, email: student.email, role: 'student' },
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af:app/api/auth/student/login/route.ts
       process.env.JWT_SECRET || 'fallback_secret',
       { expiresIn: '7d' }
     );
@@ -48,11 +45,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       token,
-<<<<<<< HEAD:app/api/auth/user/login/route.ts
       user: userProfile
-=======
       user: studentProfile
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af:app/api/auth/student/login/route.ts
     })
 
   } catch (error) {

@@ -30,8 +30,6 @@ export const sendOTP = async (to: string, code: string) => {
     return false;
   }
 };
-<<<<<<< HEAD
-=======
 
 export const sendVerificationSuccess = async (to: string, name: string) => {
   try {
@@ -88,4 +86,3 @@ export const sendVerificationRejection = async (to: string, name: string, reason
     return false;
   }
 };
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af

@@ -48,13 +48,10 @@ export async function POST(req: Request) {
 
     // 5. FETCH ALL ACTIVE DEALS (Raw Data)
     const rawDeals = await prisma.deal.findMany({
-<<<<<<< HEAD:app/api/auth/user/dashboard/route.ts
       where: { isActive: true },
       take: 50, // Show more deals
-=======
       where: { status: { in: ['APPROVED', 'ACTIVE'] } },
       take: 10, // ✅ Strict limit for Vercel Free Tier (Payload < 4.5MB)
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af:app/api/auth/student/dashboard/route.ts
       include: {
         business: {
           select: {
@@ -85,16 +82,13 @@ export async function POST(req: Request) {
         score += 20
       }
 
-<<<<<<< HEAD:app/api/auth/user/dashboard/route.ts
       // RULE C: Interest Match (+15 Points)
       // If the user has saved deals in this category before, boost it.
       if (preferredCategories.has(deal.category)) {
-=======
       // RULE B: Location Match (+15 Points)
       // If the business is in the same city as the student's university, boost it.
       const businessCity = deal.business.city || ""
       if (businessCity.toLowerCase().includes(studentCity.toLowerCase())) {
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af:app/api/auth/student/dashboard/route.ts
         score += 15
       }
 

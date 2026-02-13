@@ -8,11 +8,8 @@ import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '../context/AuthContext';
-<<<<<<< HEAD
-=======
 import { FilterProvider } from '../context/FilterContext';
 import { NotificationProvider } from '../context/NotificationContext';
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
 const queryClient = new QueryClient();
 // Configure notifications to show even when app is foregrounded
@@ -27,7 +24,6 @@ SplashScreen.preventAutoHideAsync();
 
 import { useState } from 'react';
 
-<<<<<<< HEAD
 // ... (keep existing imports)
 
 import AnimatedSplash from '../components/AnimatedSplash';
@@ -38,14 +34,12 @@ function InitialLayout() {
   const { isLoading, user } = useAuth();
   const [appReady, setAppReady] = useState(false);
   const [splashAnimationFinished, setSplashAnimationFinished] = useState(false);
-=======
 
 // ... (keep existing imports)
 
 export default function RootLayout() {
   const [appReady, setAppReady] = useState(false);
 
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -53,7 +47,6 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (loaded) {
-<<<<<<< HEAD
       SplashScreen.hideAsync();
 
       // Minimum splash time of 2.5s
@@ -95,7 +88,6 @@ export default function RootLayout() {
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView>
-=======
       // Hide native splash screen immediately so our animated one takes over
       SplashScreen.hideAsync();
       setAppReady(true);
@@ -124,6 +116,5 @@ export default function RootLayout() {
         </AuthProvider>
       </QueryClientProvider>
     </GestureHandlerRootView >
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   );
 }

@@ -50,15 +50,12 @@ export async function POST(req: Request) {
         const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${userType.toLowerCase()}/reset-password?token=${token}`
 
         const { data, error } = await resend.emails.send({
-<<<<<<< HEAD
             from: 'auth@win-app.tn', // Updated domain if applicable, or keep generic but consistent
             to: [email],
             subject: 'WIN: Reset Your Password',
-=======
             from: 'otp@student-life.uk',
             to: [email],
             subject: 'Reset Your Password',
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
             text: `Reset your password by visiting this link: ${resetUrl}`,
             html: `
         <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; border: 1px solid #f0f0f0; border-radius: 20px; text-align: center;">
@@ -86,7 +83,4 @@ export async function POST(req: Request) {
     }
 }
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af

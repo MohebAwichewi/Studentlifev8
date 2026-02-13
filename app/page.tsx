@@ -6,29 +6,22 @@ import Image from 'next/image'
 import { motion } from 'framer-motion'
 import Navbar from '@/components/Navbar'
 
-<<<<<<< HEAD
 export default function GuestHome() {
-=======
 
 // --- FETCHED DATA FROM API ---
 
 export default function LandingPage() {
   const [deals, setDeals] = useState<any[]>([])
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   const [loading, setLoading] = useState(true)
   const [deals, setDeals] = useState<any[]>([])
   const [categories, setCategories] = useState<any[]>([]) // Added state
   const [searchQuery, setSearchQuery] = useState('')
   const [heroConfig, setHeroConfig] = useState<any>(null)
 
-<<<<<<< HEAD
-=======
   // --- LOAD LIVE DEALS ---
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   useEffect(() => {
     async function loadData() {
       try {
-<<<<<<< HEAD
         // Parallel Fetch
         const [dealsRes, heroRes, catRes] = await Promise.all([
           fetch('/api/public/deals', { cache: 'no-store' }),
@@ -53,7 +46,6 @@ export default function LandingPage() {
 
       } catch (error) {
         console.error("Failed to load data:", error)
-=======
         const res = await fetch('/api/public/deals', { cache: 'no-store' })
         const data = await res.json()
         if (data.success) {
@@ -64,7 +56,6 @@ export default function LandingPage() {
       } catch (e) {
         console.error(e)
         setDeals([])
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
       } finally {
         setLoading(false)
       }
@@ -100,7 +91,6 @@ export default function LandingPage() {
 
 
   return (
-<<<<<<< HEAD
     <div className="min-h-screen bg-[#F9FAFB] font-sans selection:bg-[#E60023] selection:text-white">
 
       {/* 1. MODERN NAVBAR */}
@@ -428,7 +418,6 @@ export default function LandingPage() {
           </Link>
         </div>
       </section>
-=======
     <div className="min-h-screen bg-white font-sans text-slate-900 overflow-x-hidden selection:bg-black selection:text-white pt-[70px]">
 
       {/* ==================== 1. NAVBAR (Sticky Top) ==================== */}
@@ -651,7 +640,6 @@ export default function LandingPage() {
           <p className="text-xs font-bold text-slate-300 text-center">© 2026 Student.LIFE UK</p>
         </div>
       </div>
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
     </div>
   )

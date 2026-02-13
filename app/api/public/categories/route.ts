@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-<<<<<<< HEAD
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
     try {
         const categories = await prisma.category.findMany({
-=======
 export async function GET() {
     try {
         const categories = await prisma.category.findMany({
@@ -16,16 +14,13 @@ export async function GET() {
                 name: true,
                 type: true
             },
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
             orderBy: {
                 name: 'asc'
             }
         })
-<<<<<<< HEAD
         return NextResponse.json(categories)
     } catch (error) {
         return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 })
-=======
 
         // ✅ Fallback if DB is empty to ensure UI has buttons
         if (categories.length === 0) {
@@ -53,6 +48,5 @@ export async function GET() {
             success: true,
             categories: [{ name: 'Food' }, { name: 'Tech' }, { name: 'Fashion' }]
         })
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     }
 }

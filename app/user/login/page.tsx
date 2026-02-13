@@ -27,11 +27,8 @@ export default function UserLogin() {
          const data = await res.json()
 
          if (res.ok) {
-<<<<<<< HEAD:app/user/login/page.tsx
             localStorage.setItem('userEmail', data.email || formData.email)
-=======
             localStorage.setItem('studentEmail', data.email || formData.email)
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af:app/student/login/page.tsx
             localStorage.setItem('authToken', data.token) // ✅ Critical: Save Token for Auth checks
             setTimeout(() => {
                // ✅ Redirect to User Home

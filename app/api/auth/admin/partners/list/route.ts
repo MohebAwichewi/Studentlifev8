@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
@@ -85,7 +84,6 @@ export async function GET(req: Request) {
 
     } catch (error) {
         console.error("Partner List Error:", error)
-=======
 
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
@@ -110,7 +108,6 @@ export async function GET() {
 
         return NextResponse.json(partners)
     } catch (error) {
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         return NextResponse.json({ error: "Failed to fetch partners" }, { status: 500 })
     }
 }

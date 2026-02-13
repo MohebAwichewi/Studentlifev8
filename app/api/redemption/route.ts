@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
@@ -76,7 +75,6 @@ export async function POST(req: Request) {
     } catch (error) {
         console.error("Redemption Error:", error);
         return NextResponse.json({ error: "Redemption failed" }, { status: 500 });
-=======
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
@@ -112,6 +110,5 @@ export async function POST(req: Request) {
     } catch (error) {
         console.error("Redemption Creation Error:", error)
         return NextResponse.json({ success: false, error: "Server Error" }, { status: 500 })
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     }
 }

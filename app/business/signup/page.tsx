@@ -5,10 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Script from 'next/script'
 import { useRouter } from 'next/navigation'
-<<<<<<< HEAD
 import { motion, AnimatePresence } from 'framer-motion'
-=======
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
 export default function BusinessSignup() {
   const router = useRouter()
@@ -35,23 +32,17 @@ export default function BusinessSignup() {
     otp: '',
     password: '',
     latitude: 0,
-<<<<<<< HEAD
     longitude: 0,
     googleMapsUrl: '' // Added field
-=======
     longitude: 0
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   })
 
   // OTP State
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
   const [otpSent, setOtpSent] = useState(false)
 
-<<<<<<< HEAD
-=======
   // Declare custom element to avoid TS errors
   // (You can also move this to a types.d.ts file, but here is fine for now)
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   // @ts-ignore
   declare global {
     namespace JSX {
@@ -60,7 +51,6 @@ export default function BusinessSignup() {
           placeholder?: string;
         };
       }
-<<<<<<< HEAD
     }
   }
 
@@ -91,7 +81,6 @@ export default function BusinessSignup() {
       el.addEventListener('gmp-places-select', onPlaceSelect);
       return () => { el.removeEventListener('gmp-places-select', onPlaceSelect); };
     }
-=======
     }
   }
 
@@ -138,7 +127,6 @@ export default function BusinessSignup() {
         el.removeEventListener('gmp-places-select', onPlaceSelect);
       };
     }
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   }, [step, isManualEntry]);
 
   // --- ACTIONS ---
@@ -151,12 +139,10 @@ export default function BusinessSignup() {
 
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-<<<<<<< HEAD
     let fullAddress = formData.address
     if (formData.city && !fullAddress.toLowerCase().includes(formData.city.toLowerCase())) fullAddress += `, ${formData.city}`
     if (formData.postcode && !fullAddress.toLowerCase().includes(formData.postcode.toLowerCase())) fullAddress += `, ${formData.postcode}`
 
-=======
 
     // 1. Construct Full Address
     let fullAddress = formData.address
@@ -168,12 +154,10 @@ export default function BusinessSignup() {
     }
 
     // 2. Geocode Address to get Lat/Lng
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     if (window.google && window.google.maps) {
       const geocoder = new window.google.maps.Geocoder()
       geocoder.geocode({ address: fullAddress }, (results, status) => {
         if (status === 'OK' && results && results[0]) {
-<<<<<<< HEAD
           setFormData(prev => ({ ...prev, address: results[0].formatted_address, latitude: results[0].geometry.location.lat(), longitude: results[0].geometry.location.lng() }))
         } else {
           setFormData(prev => ({ ...prev, address: fullAddress }))
@@ -182,7 +166,6 @@ export default function BusinessSignup() {
       })
     } else {
       setFormData(prev => ({ ...prev, address: fullAddress }))
-=======
           const lat = results[0].geometry.location.lat()
           const lng = results[0].geometry.location.lng()
           const formattedAddress = results[0].formatted_address
@@ -212,7 +195,6 @@ export default function BusinessSignup() {
         ...prev,
         address: fullAddress
       }))
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
       setStep(2)
     }
   }
@@ -238,20 +220,15 @@ export default function BusinessSignup() {
     } catch (err) { alert("Error"); } finally { setLoading(false); }
   }
 
-<<<<<<< HEAD
-=======
   // ✅ Create Account (No Stripe)
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
       const res = await fetch('/api/auth/business/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) })
       const data = await res.json()
-<<<<<<< HEAD
       if (res.ok) { router.push('/business/login?success=account_created'); } else { alert(data.error); }
     } catch (err) { alert("Failed"); } finally { setLoading(false); }
-=======
 
       if (res.ok) {
         // 2. Immediate Success - No Stripe
@@ -265,7 +242,6 @@ export default function BusinessSignup() {
     } finally {
       setLoading(false)
     }
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   }
 
   const handleOtpChange = (element: HTMLInputElement, index: number) => {
@@ -304,21 +280,18 @@ export default function BusinessSignup() {
             </div>
           ))}
         </div>
-<<<<<<< HEAD
         <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 px-1">
           <span>Find</span>
           <span>Details</span>
           <span>Email</span>
           <span>Verify</span>
           <span>Done</span>
-=======
 
         <div className="relative z-10 space-y-6 mt-12 hidden md:block">
           <StepIndicator step={1} current={step} label="Find Store" />
           <StepIndicator step={2} current={step} label="Review & Contact" />
           <StepIndicator step={3} current={step} label="Login Details" />
           <StepIndicator step={5} current={step} label="Create Password" />
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         </div>
       </div>
 
@@ -341,17 +314,14 @@ export default function BusinessSignup() {
             {!isManualEntry ? (
               <div className="space-y-6">
                 <div className="relative">
-<<<<<<< HEAD
                   <i className="fa-solid fa-magnifying-glass absolute left-4 top-4 text-gray-400 z-10"></i>
                   {/* @ts-ignore */}
                   <gmp-place-autocomplete ref={searchInputRef} placeholder="Search business name..." types={['establishment', 'geocode']}>
                     <input type="text" className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-12 pr-4 py-4 font-bold focus:outline-none focus:border-[#D90020] focus:ring-1 focus:ring-[#D90020] transition placeholder-gray-400 outline-none text-[#111111]" />
-=======
                   <i className="fa-solid fa-magnifying-glass absolute left-4 top-4 text-slate-400 z-10"></i>
                   {/* @ts-ignore */}
                   <gmp-place-autocomplete ref={searchInputRef} placeholder="Search business name or address..." types={['establishment', 'geocode']}>
                     <input type="text" className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-12 pr-4 py-4 font-bold focus:outline-none focus:border-black transition" />
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
                   </gmp-place-autocomplete>
                 </div>
                 <button onClick={toggleManualMode} className="text-sm font-bold text-[#D90020] hover:underline block mx-auto transition">
@@ -490,13 +460,10 @@ export default function BusinessSignup() {
           </form>
         )}
 
-<<<<<<< HEAD
       </motion.div>
 
       <div className="mt-8 text-sm font-bold text-gray-400">
         Already have an account? <Link href="/business/login" className="text-[#D90020] hover:underline">Log in</Link>
-=======
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
       </div>
 
     </div>
@@ -508,9 +475,7 @@ const InputGroup = ({ label, placeholder, value, onChange, required }: any) => (
     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">{label}</label>
     <input required={required} type="text" placeholder={placeholder} className="w-full bg-white border border-gray-200 rounded-xl px-5 py-4 font-bold text-[#111111] focus:outline-none focus:border-[#D90020] focus:ring-1 focus:ring-[#D90020] transition placeholder-gray-400" value={value} onChange={e => onChange && onChange(e.target.value)} />
   </div>
-<<<<<<< HEAD
 )
-=======
 )
 
 const StepIndicator = ({ step, current, label }: any) => {
@@ -525,4 +490,3 @@ const StepIndicator = ({ step, current, label }: any) => {
     </div>
   )
 }
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af

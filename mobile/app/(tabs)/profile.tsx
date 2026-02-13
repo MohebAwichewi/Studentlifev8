@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, ScrollView, Image, Linking, Alert, Modal } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
@@ -24,7 +23,6 @@ export default function ProfileScreen() {
                         signOut();
                         router.replace('/(auth)/login');
                     }
-=======
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, Alert, Linking, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -191,13 +189,11 @@ export default function ProfileScreen() {
                 {
                     text: "Cancel",
                     style: "cancel"
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
                 }
             ]
         );
     };
 
-<<<<<<< HEAD
     const MenuItem = ({ icon, label, subLabel, onPress, color = "#0f172a", iconType = "fa5" }: any) => (
         <TouchableOpacity
             onPress={onPress}
@@ -381,7 +377,6 @@ export default function ProfileScreen() {
         </SafeAreaView>
     );
 }
-=======
     const openGallery = async () => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
@@ -705,4 +700,3 @@ const AvatarModal = ({ visible, onClose, onSave, selectedStyle, setSelectedStyle
         </Modal>
     );
 };
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af

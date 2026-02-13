@@ -3,11 +3,8 @@
 import React, { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-<<<<<<< HEAD
 import DealForm from '@/components/business/DealForm'
-=======
 import ImageUpload from '@/components/ui/ImageUpload'
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
 export default function AdvancedDealBuilder() {
   const router = useRouter()
@@ -17,9 +14,7 @@ export default function AdvancedDealBuilder() {
   const [businessEmail, setBusinessEmail] = useState('')
   const [businessId, setBusinessId] = useState('')
 
-<<<<<<< HEAD
   // --- 1. LOAD AUTH DATA ---
-=======
   // --- CATEGORY STATE (✅ NEW) ---
   const [categories, setCategories] = useState<any[]>([])
   const [subCategories, setSubCategories] = useState<any[]>([])
@@ -40,7 +35,6 @@ export default function AdvancedDealBuilder() {
   })
 
   // --- 1. LOAD AUTH DATA & CATEGORIES ---
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   useEffect(() => {
     const email = localStorage.getItem('businessEmail')
     const id = localStorage.getItem('businessId')
@@ -52,10 +46,8 @@ export default function AdvancedDealBuilder() {
       setBusinessEmail(email)
       setBusinessId(id)
     }
-<<<<<<< HEAD
   }, [router])
 
-=======
 
     // ✅ Fetch Categories
     fetch('/api/auth/admin/categories')
@@ -80,7 +72,6 @@ export default function AdvancedDealBuilder() {
     setSubCategories(selectedCat?.children || [])
   }
 
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   // --- ACTIONS ---
   const handleSubmit = async (formData: any) => {
     setIsSubmitting(true)
@@ -90,11 +81,8 @@ export default function AdvancedDealBuilder() {
       : formData.description
 
     try {
-<<<<<<< HEAD
       const res = await fetch('/api/auth/business/create-deal', {
-=======
       const res = await fetch('/api/auth/deals/create', {
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -102,7 +90,6 @@ export default function AdvancedDealBuilder() {
           businessId: businessId,
           title: formData.title,
           discount: formData.discount,
-<<<<<<< HEAD
           discountType: formData.discountType,
           originalPrice: formData.originalPrice,
           category: formData.category,
@@ -122,7 +109,6 @@ export default function AdvancedDealBuilder() {
           startTime: formData.startTime,
           activeHoursStart: formData.activeHoursStart,
           activeHoursEnd: formData.activeHoursEnd
-=======
           category: formData.category,
           subCategory: formData.subCategory, // ✅ Send SubCategory
           expiry: formData.validUntil,
@@ -131,7 +117,6 @@ export default function AdvancedDealBuilder() {
           isMultiUse: formData.isMultiUse,
           redemptionType: formData.redemptionType,
           redemptionLink: formData.redemptionLink
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         })
       })
 
@@ -159,22 +144,16 @@ export default function AdvancedDealBuilder() {
 
   return (
     <div className="min-h-screen bg-[#F4F7FE] font-sans text-slate-900 flex">
-<<<<<<< HEAD
-=======
 
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
       {/* --- SIDEBAR --- */}
       <aside className="w-64 bg-white border-r border-slate-200 flex-col justify-between hidden md:flex fixed h-full z-50">
         <div>
           <div className="h-20 flex items-center px-6 border-b border-slate-50">
             <Link href="/" className="flex items-center gap-1 group">
-<<<<<<< HEAD
               <span className="text-xl font-black tracking-tighter text-slate-900">WIN</span>
               <span className="bg-[#FF3B30] text-white px-1.5 py-0.5 rounded text-xs font-black tracking-wide">.PARTNER</span>
-=======
               <span className="text-xl font-black tracking-tighter text-slate-900">Student</span>
               <span className="bg-[#FF3B30] text-white px-1.5 py-0.5 rounded text-xs font-black tracking-wide">.LIFE</span>
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
             </Link>
           </div>
           <nav className="p-4 space-y-1">
@@ -196,10 +175,7 @@ export default function AdvancedDealBuilder() {
 
       {/* --- MAIN CONTENT --- */}
       <main className="flex-1 md:ml-64 flex flex-col min-h-screen">
-<<<<<<< HEAD
-=======
 
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         {/* Header */}
         <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-40 shadow-sm">
           <h2 className="text-xl font-black text-slate-800">Advanced Builder</h2>
@@ -213,14 +189,12 @@ export default function AdvancedDealBuilder() {
         </header>
 
         {/* Builder Form */}
-<<<<<<< HEAD
         <div className="p-8 max-w-6xl mx-auto w-full">
           <DealForm
             mode="create"
             onSubmit={handleSubmit}
             isSubmitting={isSubmitting}
           />
-=======
         <div className="p-8 max-w-5xl mx-auto w-full">
 
           <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -417,7 +391,6 @@ export default function AdvancedDealBuilder() {
 
             </div>
           </form>
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         </div>
       </main >
     </div >

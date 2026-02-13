@@ -26,21 +26,18 @@ export async function GET(req: Request) {
     if (ip === '::1') ip = '127.0.0.1'
 
     // --- 2. Resolve IP to City (GeoLocation) ---
-<<<<<<< HEAD
     let userCity = manualCity || 'Tunis' // Default fallback or Manual Override
     let isApproximate = !manualCity // If manual, it's precise preference
 
     if (ip !== '127.0.0.1' && !manualCity) {
       try {
         // Using ip-api.com (Free for non-commercial use)
-=======
     // --- 2. Resolve IP to City (GeoLocation) ---
     let userCity = '' // No default city
     let isApproximate = true
 
     if (ip !== '127.0.0.1') {
       try {
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         const geoRes = await fetch(`http://ip-api.com/json/${ip}`)
         const geoData = await geoRes.json()
 
@@ -51,8 +48,6 @@ export async function GET(req: Request) {
       } catch (e) {
         console.error("Geolocation failed, using default.")
       }
-<<<<<<< HEAD
-=======
     }
 
     // --- 3. Build Query Filters ---
@@ -105,11 +100,9 @@ export async function GET(req: Request) {
       orderBy = { createdAt: 'desc' };
     } else if (sort === 'expiring') {
       orderBy = { expiry: 'asc' };
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     }
 
     let deals = await prisma.deal.findMany({
-<<<<<<< HEAD
       where: {
         isActive: true, // Only show active deals
         business: {
@@ -125,11 +118,9 @@ export async function GET(req: Request) {
         { isPriority: 'desc' }, // Priority deals next
         { createdAt: 'desc' }   // Then newest
       ],
-=======
       where: whereClause,
       take: 200,
       orderBy: orderBy,
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
       include: {
         business: {
           select: {
@@ -147,7 +138,6 @@ export async function GET(req: Request) {
 
     // --- 4. Fallback: If no deals in their city, show TOP deals from anywhere ---
     if (deals.length === 0) {
-<<<<<<< HEAD
       deals = await prisma.deal.findMany({
         where: { isActive: true },
         take: 50,
@@ -170,7 +160,6 @@ export async function GET(req: Request) {
       location: userCity,
       deals,
       isLocal: ip === '127.0.0.1'
-=======
       console.log(`No deals found in ${userCity}, fetching global fallback.`);
 
       // Remove city filter, keep status/soldOut filters
@@ -235,7 +224,6 @@ export async function GET(req: Request) {
       isLocal: ip === '127.0.0.1',
       sortedByDistance: hasLocation,
       fallback: deals.length > 0 && userCity && deals[0]?.business?.city !== userCity // Flag if fallback was used
->>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     })
 
   } catch (error) {
