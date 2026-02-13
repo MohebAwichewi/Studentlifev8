@@ -1,0 +1,50 @@
+```javascript
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+
+export async function GET() {
+  try {
+    // 1. Fetch all APPROVED deals with their Business Locations
+    const activeDeals = await prisma.deal.findMany({
+      where: { isActive: true },
+      include: {
+        business: {
+          select: {
+            id: true,
+            businessName: true,
+            city: true,
+            latitude: true,
+            longitude: true,
+            logo: true
+          }
+        }
+      }
+    })
+
+    // 2. Format data for Google Maps
+    // If a business has 3 locations, we show the deal at ALL 3 locations.
+    const mapPins: any[] = []
+
+    activeDeals.forEach(deal => {
+          mapPins.push({
+            id: `${ deal.id } -${ loc.id } `, // Unique ID for map key
+            dealId: deal.id,
+            title: deal.title,
+            category: deal.category,
+            businessName: deal.business.businessName,
+            businessId: deal.business.id,
+            lat: loc.lat,
+            lng: loc.lng,
+            locationName: loc.name
+          })
+        })
+      }
+    })
+
+    return NextResponse.json({ success: true, pins: mapPins })
+
+  } catch (error) {
+    console.error("Map Data Error:", error)
+    return NextResponse.json({ error: "Server Error" }, { status: 500 })
+  }
+}

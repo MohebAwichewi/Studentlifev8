@@ -2,7 +2,9 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 
 export default function BusinessLogin() {
   const router = useRouter()
@@ -14,7 +16,7 @@ export default function BusinessLogin() {
   })
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault() // 🛑 STOP PAGE REFRESH
+    e.preventDefault()
     setLoading(true)
     setError('')
 
@@ -28,12 +30,17 @@ export default function BusinessLogin() {
       const data = await res.json()
 
       if (res.ok) {
-        // ✅ Login Success: Save session & Redirect
         localStorage.setItem('isBusinessLoggedIn', 'true')
         localStorage.setItem('businessId', data.businessId)
         localStorage.setItem('businessName', data.businessName)
+        localStorage.setItem('businessEmail', formData.email)
+        localStorage.setItem('businessStatus', data.status) // Save status
 
-        router.push('/business/dashboard') // 🚀 Go to Dashboard
+        if (data.status === 'PENDING') {
+          router.push('/business/pending')
+        } else {
+          router.push('/business/dashboard')
+        }
       } else {
         setError(data.error || "Login failed")
       }
@@ -45,82 +52,102 @@ export default function BusinessLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 font-sans text-slate-900 selection:bg-black selection:text-white">
-      <div className="bg-white rounded-3xl shadow-xl p-10 w-full max-w-md text-center relative border border-slate-100">
+    <div className="min-h-screen bg-white flex flex-col lg:flex-row font-sans text-slate-900 selection:bg-[#D90020] selection:text-white">
 
-        {/* ✅ CLOSE BUTTON (Redirects to Home) */}
-        <Link
-          href="/"
-          className="absolute top-6 right-6 text-slate-300 hover:text-black transition duration-200 p-2 hover:bg-slate-50 rounded-full"
-        >
-          <i className="fa-solid fa-xmark text-xl"></i>
-        </Link>
+      {/* LEFT PANEL: BRANDING */}
+      <div className="hidden lg:flex w-1/2 bg-[#D90020] relative overflow-hidden items-center justify-center p-12">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#D90020] to-[#990016] opacity-90"></div>
 
-        {/* ✅ LOGO: Matches Home & Student Login */}
-        <div className="mb-10 flex justify-center">
-          <Link href="/" className="flex items-center gap-1 group">
-            <span className="text-3xl font-black tracking-tighter text-slate-900">Student</span>
-            <span className="bg-[#FF3B30] text-white px-2 py-0.5 rounded-md text-xl font-black tracking-wide transform -rotate-2 group-hover:rotate-0 transition-transform">.LIFE</span>
-          </Link>
-        </div>
+        {/* Abstract Shapes */}
+        <motion.div
+          animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
+          transition={{ duration: 20, repeat: Infinity }}
+          className="absolute top-[-20%] left-[-20%] w-[500px] h-[500px] bg-white rounded-full mix-blend-overlay filter blur-[100px] opacity-20"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.1, 1], x: [0, 50, 0] }}
+          transition={{ duration: 15, repeat: Infinity }}
+          className="absolute bottom-[-10%] right-[-10%] w-[400px] h-[400px] bg-orange-500 rounded-full mix-blend-overlay filter blur-[80px] opacity-30"
+        />
 
-        <h1 className="text-3xl font-black text-slate-900 mb-2 tracking-tight">Partner Portal</h1>
-        <p className="text-slate-500 font-medium text-sm mb-8">Log in to manage your deals and analytics.</p>
-
-        <form onSubmit={handleLogin} className="space-y-6 text-left">
-
-          <div>
-            <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider mb-2 ml-1">Business Email</label>
-            <input
-              type="email"
-              required
-              placeholder="manager@store.com"
-              className="w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-3.5 font-bold text-slate-900 placeholder-slate-300 focus:outline-none focus:border-black transition-colors"
-              value={formData.email}
-              onChange={e => setFormData({ ...formData, email: e.target.value })}
-            />
-          </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-2 ml-1">
-              <label className="block text-xs font-bold text-slate-900 uppercase tracking-wider">Password</label>
-              <Link href="/business/forgot-password" className="text-xs font-bold text-slate-400 hover:text-black transition">Forgot?</Link>
-            </div>
-            <input
-              type="password"
-              required
-              placeholder="••••••••"
-              className="w-full bg-white border-2 border-slate-100 rounded-xl px-4 py-3.5 font-bold text-slate-900 placeholder-slate-300 focus:outline-none focus:border-black transition-colors"
-              value={formData.password}
-              onChange={e => setFormData({ ...formData, password: e.target.value })}
-            />
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 text-red-600 text-sm font-bold p-3 rounded-lg text-center flex items-center justify-center gap-2">
-              <i className="fa-solid fa-circle-exclamation"></i>
-              {error}
-            </div>
-          )}
-
-          {/* ✅ BUTTON: Updated to Black to match Home Page */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-black hover:bg-slate-800 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 mt-4"
+        <div className="relative z-10 text-center max-w-lg">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
           >
-            {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : "Access Dashboard"}
-          </button>
-
-        </form>
-
-        <div className="mt-8 pt-8 border-t border-slate-100">
-          <p className="text-sm text-slate-500 font-bold">
-            Don't have a partner account? <Link href="/business/signup" className="text-black hover:underline decoration-2 underline-offset-4">Apply here</Link>
-          </p>
+            <Image src="/images/win-logo.svg" alt="WIN Logo" width={100} height={100} className="mx-auto mb-8 w-24 h-auto ml-36 brightness-0 invert" />
+            <h1 className="text-5xl font-black text-white mb-6 leading-tight">Partner with the future.</h1>
+            <p className="text-white/80 text-xl font-medium leading-relaxed">
+              Manage your deals, track analytics, and connect with thousands of local customers.
+            </p>
+          </motion.div>
         </div>
+      </div>
 
+      {/* RIGHT PANEL: FORM */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 md:p-16 lg:p-24 bg-white relative">
+        <div className="w-full max-w-md space-y-8">
+
+          <div className="text-center lg:text-left">
+            <Link href="/" className="lg:hidden inline-block mb-8">
+              <Image src="/images/win-logo.svg" alt="WIN Logo" width={60} height={60} className="mx-auto" />
+            </Link>
+            <h2 className="text-3xl md:text-4xl font-black text-[#111111]">Welcome back</h2>
+            <p className="text-gray-500 mt-2 font-medium">Please enter your details to sign in.</p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Business Email</label>
+              <input
+                type="email"
+                required
+                placeholder="manager@store.com"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 font-bold text-[#111111] placeholder-gray-400 focus:outline-none focus:border-[#D90020] focus:ring-1 focus:ring-[#D90020] transition-all"
+                value={formData.email}
+                onChange={e => setFormData({ ...formData, email: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Password</label>
+                <Link href="/business/forgot-password" className="text-xs font-bold text-[#D90020] hover:text-[#b0001a] transition">Forgot password?</Link>
+              </div>
+              <input
+                type="password"
+                required
+                placeholder="••••••••"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 font-bold text-[#111111] placeholder-gray-400 focus:outline-none focus:border-[#D90020] focus:ring-1 focus:ring-[#D90020] transition-all"
+                value={formData.password}
+                onChange={e => setFormData({ ...formData, password: e.target.value })}
+              />
+            </div>
+
+            {error && (
+              <div className="bg-red-50 text-[#D90020] text-sm font-bold p-4 rounded-xl flex items-center gap-3 animate-pulse">
+                <i className="fa-solid fa-circle-exclamation"></i>
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#D90020] hover:bg-[#b0001a] text-white font-bold py-4 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2"
+            >
+              {loading ? <i className="fa-solid fa-circle-notch fa-spin"></i> : "Sign in"}
+            </button>
+          </form>
+
+          <div className="text-center pt-4">
+            <p className="text-gray-500 font-medium">
+              Don't have an account? <Link href="/business/signup" className="text-[#D90020] font-bold hover:underline">Apply now</Link>
+            </p>
+          </div>
+
+        </div>
       </div>
     </div>
   )

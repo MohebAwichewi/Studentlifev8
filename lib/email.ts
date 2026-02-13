@@ -1,21 +1,13 @@
-import nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
-export const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: true, // true for 465
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend('re_VMjQDLk9_7DzcovXwZs4vR35cijz2t7kq');
 
 export const sendOTP = async (to: string, code: string) => {
   try {
-    await transporter.sendMail({
-      from: `"Student.LIFE Security" <${process.env.SMTP_USER}>`,
-      to,
-      subject: "Your Verification Code - Student.LIFE",
+    const { data, error } = await resend.emails.send({
+      from: 'otp@student-life.uk',
+      to: [to],
+      subject: 'Your Verification Code - Student.LIFE',
       html: `
         <div style="font-family: sans-serif; padding: 20px; text-align: center;">
           <h2 style="color: #6246ea;">Student.LIFE</h2>
@@ -25,6 +17,13 @@ export const sendOTP = async (to: string, code: string) => {
         </div>
       `,
     });
+
+    if (error) {
+      console.error("Resend Error:", error);
+      return false;
+    }
+
+    console.log("Resend Success:", data);
     return true;
   } catch (error) {
     console.error("Email Error:", error);

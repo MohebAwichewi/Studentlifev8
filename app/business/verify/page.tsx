@@ -84,7 +84,7 @@ export default function BusinessVerify() {
             {/* HEADER */}
             <div className="p-6 text-center border-b border-slate-100">
                <h1 className="text-xl font-black text-slate-900">Merchant Scanner</h1>
-               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Verify Student ID</p>
+               <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Verify Ticket / User</p>
             </div>
 
             {/* --- SUCCESS SCREEN --- */}

@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
   try {
@@ -46,12 +44,12 @@ export async function POST(req: Request) {
       data: {
         title,
         description,
-        discountValue: discount,
+        discount: discount,
         businessId: business.id,
         image: image || null, // Use real image URL from frontend or null
         category: category || "General",
         expiry: expiry || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(), // Default 1 year if empty
-        status: 'PENDING', // ✅ Enforce Admin Approval
+        isActive: true, // ✅ Immediate Visibility
         isMultiUse: true
       }
     })

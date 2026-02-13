@@ -14,7 +14,7 @@ const defaultCenter = {
   lng: -0.09
 }
 
-// 1. ✅ CUSTOM PARTNER PIN (Student.LIFE Red)
+// 1. ✅ CUSTOM PARTNER PIN (WIN Red)
 const partnerIcon = {
   // SVG Path for a Map Marker shape
   path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z",
@@ -137,7 +137,7 @@ export default function GoogleDealMap({ pins, userLocation }: MapProps) {
             {/* Added a tiny badge to the popup as well */}
             <span className="bg-[#FF3B30] text-white text-[10px] px-2 py-0.5 rounded font-bold mb-2 inline-block">Partner</span>
             
-            <a href={`/student/deal/${selectedPin.id}`} className="block text-center bg-black text-white text-xs font-bold py-2 rounded-lg mt-1">
+            <a href={`/user/deal/${selectedPin.id}`} className="block text-center bg-black text-white text-xs font-bold py-2 rounded-lg mt-1">
                 View Deal
             </a>
           </div>

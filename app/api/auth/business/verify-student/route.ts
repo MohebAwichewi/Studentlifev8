@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
     // ✅ REAL DATABASE LOOKUP
     // We try to find the student by Email OR by ID based on what was sent
-    const student = await prisma.student.findUnique({
+    const user = await prisma.user.findUnique({
       where: email ? { email } : { id }, // Dynamic where clause
       select: {
         id: true,

@@ -1,20 +1,9 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import nodemailer from 'nodemailer'
+import { prisma } from '@/lib/prisma'
+import { Resend } from 'resend';
 import crypto from 'crypto'
 
-const prisma = new PrismaClient()
-
-// Email Transporter (Reusing existing config from send-otp)
-const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: false,
-    auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-    },
-})
+const resend = new Resend('re_VMjQDLk9_7DzcovXwZs4vR35cijz2t7kq');
 
 export async function POST(req: Request) {
     try {
@@ -29,7 +18,7 @@ export async function POST(req: Request) {
         if (userType === 'BUSINESS') {
             user = await prisma.business.findUnique({ where: { email } })
         } else {
-            user = await prisma.student.findUnique({ where: { email } })
+            user = await prisma.user.findUnique({ where: { email } })
         }
 
         if (!user) {
@@ -46,13 +35,10 @@ export async function POST(req: Request) {
             where: {
                 identifier_token: {
                     identifier: email,
-                    token: token // This is technically unique constraint, but we want to clear old ones ideally. 
-                    // However, standard NextAuth VerificationToken table is usually insert-only or specific cleanup.
-                    // We'll just create a new one. Upsert requires unique combo.
-                    // Actually, let's delete old ones first to keep it clean.
+                    token: token
                 }
             },
-            update: { expires }, // Fallback, won't happen if we use random token
+            update: { expires },
             create: {
                 identifier: email,
                 token,
@@ -60,29 +46,31 @@ export async function POST(req: Request) {
             }
         })
 
-        // Better approach: Clean old unique tokens for this email if possible, or just create.
-        // Since default unique is [identifier, token], we can have multiple tokens per email.
-        // That's fine.
-
-        // 4. Send Email
+        // 4. Send Email via Resend
         const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/${userType.toLowerCase()}/reset-password?token=${token}`
 
-        await transporter.sendMail({
-            from: `"Student.LIFE Security" <${process.env.SMTP_USER}>`,
-            to: email,
-            subject: 'Reset Your Password',
+        const { data, error } = await resend.emails.send({
+            from: 'auth@win-app.tn', // Updated domain if applicable, or keep generic but consistent
+            to: [email],
+            subject: 'WIN: Reset Your Password',
             text: `Reset your password by visiting this link: ${resetUrl}`,
             html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
-          <h2 style="color: #0D3C34; text-align: center;">Password Reset Request</h2>
-          <p style="color: #555;">You requested to reset your password. Click the button below to proceed:</p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" style="background-color: #000; color: #fff; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold;">Reset Password</a>
+        <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px; border: 1px solid #f0f0f0; border-radius: 20px; text-align: center;">
+          <h2 style="color: #000; font-size: 24px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 10px;">WIN</h2>
+          <h2 style="color: #111; font-size: 20px; font-weight: bold; margin-bottom: 20px;">Reset Password Request</h2>
+          <p style="color: #666; font-size: 16px; line-height: 1.5; margin-bottom: 30px;">You requested to reset your password. Click the button below to proceed:</p>
+          <div style="text-align: center; margin-bottom: 40px;">
+            <a href="${resetUrl}" style="background-color: #D90020; color: #fff; padding: 16px 32px; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 16px; display: inline-block;">Reset Password</a>
           </div>
-          <p style="color: #888; font-size: 12px; text-align: center;">Link valid for 1 hour. If you didn't request this, please ignore.</p>
+          <p style="color: #999; font-size: 12px;">Link valid for 1 hour. If you didn't request this, please ignore.</p>
         </div>
       `
-        })
+        });
+
+        if (error) {
+            console.error("Forgot Password Resend Error:", error);
+            // Don't leak error to client for security, but log it
+        }
 
         return NextResponse.json({ message: "If account exists, email sent." })
 
@@ -91,3 +79,5 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Server Error" }, { status: 500 })
     }
 }
+
+

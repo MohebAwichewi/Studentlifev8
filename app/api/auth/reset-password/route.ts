@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
-
-const prisma = new PrismaClient()
 
 export async function POST(req: Request) {
     try {
@@ -48,10 +46,10 @@ export async function POST(req: Request) {
                 data: { password: hashedPassword }
             })
         } else {
-            const user = await prisma.student.findUnique({ where: { email } })
+            const user = await prisma.user.findUnique({ where: { email } })
             if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 })
 
-            await prisma.student.update({
+            await prisma.user.update({
                 where: { email },
                 data: { password: hashedPassword }
             })
@@ -69,3 +67,4 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Server Error" }, { status: 500 })
     }
 }
+

@@ -1,15 +1,6 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
-import Stripe from 'stripe'
 
-const prisma = new PrismaClient()
-
-// ✅ STRIPE INITIALIZED WITH YOUR KEY
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  // ✅ FIX: Add "as any" to bypass the strict version check
-  apiVersion: '2024-12-18.acacia' as any,
-  typescript: true,
-})
 
 export async function POST(req: Request) {
   try {

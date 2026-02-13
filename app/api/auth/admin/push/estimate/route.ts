@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Count Students
-    const count = await prisma.student.count({ where: whereClause })
+    const count = await prisma.user.count({ where: whereClause })
 
     return NextResponse.json({ count, universitiesIncluded: targetUniversities })
 

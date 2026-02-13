@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - WIN Tunisia</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      padding: 20px;
+    }
+    .container {
+      text-align: center;
+      max-width: 400px;
+    }
+    .icon {
+      width: 120px;
+      height: 120px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 30px;
+      font-size: 60px;
+    }
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 15px;
+    }
+    p {
+      font-size: 16px;
+      opacity: 0.9;
+      line-height: 1.6;
+      margin-bottom: 30px;
+    }
+    .button {
+      background: white;
+      color: #667eea;
+      padding: 15px 30px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 700;
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+    .button:hover {
+      transform: scale(1.05);
+    }
+    .wallet-note {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">📡</div>
+    <h1>You're Offline</h1>
+    <p>It looks like you've lost your internet connection. Don't worry, your wallet and active tickets are still accessible!</p>
+    <a href="/user/wallet" class="button">View My Wallet</a>
+    <div class="wallet-note">
+      <strong>💡 Tip:</strong> Your active tickets are saved and can be redeemed even without internet. Just show your QR code at the merchant!
+    </div>
+  </div>
+</body>
+</html>

@@ -6,15 +6,15 @@ const prisma = new PrismaClient()
 export async function GET() {
   try {
     const deals = await prisma.deal.findMany({
-      include: { 
+      include: {
         business: {
           select: { businessName: true, plan: true, email: true }
-        } 
+        }
       },
       // ⚠️ ensure 'priorityScore' exists in your schema, otherwise remove this line
       orderBy: [
-        { priorityScore: 'desc' }, 
-        { createdAt: 'desc' }      
+        { priorityScore: 'desc' },
+        { createdAt: 'desc' }
       ]
     })
 

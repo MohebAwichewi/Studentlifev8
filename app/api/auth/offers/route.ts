@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-import { getServerSession } from "next-auth"
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
+import { getServerSession } from "next-auth/next"
 
 // 1. FOR STUDENTS: Get all deals
 export async function GET(req: Request) {
   try {
     const deals = await prisma.deal.findMany({
-      include: { business: true }, 
+      include: { business: true },
       orderBy: { createdAt: 'desc' }
     })
     return NextResponse.json(deals)
@@ -27,7 +25,7 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    
+
     // Find the business using the email from the logged-in session
     const business = await prisma.business.findUnique({
       where: { email: session.user.email }

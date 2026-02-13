@@ -7,14 +7,14 @@ export default function PrivacyPolicy() {
       <section style={{ marginBottom: '30px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '15px', color: '#1e293b' }}>1. Introduction (SEC-01)</h2>
         <p>
-          Student.LIFE ("we", "our") is committed to protecting your privacy. This policy outlines how we collect, use, and safeguard your data in compliance with GDPR and local regulations.
+          WIN ("we", "our") is committed to protecting your privacy. This policy outlines how we collect, use, and safeguard your data in compliance with GDPR and local regulations.
         </p>
       </section>
 
       <section style={{ marginBottom: '30px' }}>
         <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '15px', color: '#1e293b' }}>2. Location Data (SEC-02)</h2>
         <p>
-          We collect location data solely to show you relevant student offers nearby. 
+          We collect location data solely to show you relevant student offers nearby.
           <strong> We do not store your historical location history.</strong> Only your last known location is processed temporarily to fetch relevant results, after which it is discarded.
         </p>
       </section>
@@ -37,9 +37,9 @@ export default function PrivacyPolicy() {
           <a href="mailto:privacy@studentlife.tn" style={{ color: '#6246ea', fontWeight: '600', textDecoration: 'none' }}>privacy@studentlife.tn</a>
         </p>
       </section>
-      
+
       <div style={{ marginTop: '50px', paddingTop: '20px', borderTop: '1px solid #e2e8f0', fontSize: '0.85rem', color: '#94a3b8' }}>
-        &copy; 2025 Student.LIFE. All rights reserved.
+        &copy; 2025 WIN. All rights reserved.
       </div>
     </div>
   )

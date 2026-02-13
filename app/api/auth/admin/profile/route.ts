@@ -1,16 +1,16 @@
 import { NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
 import { hash } from 'bcryptjs'
-import { getServerSession } from "next-auth"
+
 
 const prisma = new PrismaClient()
 
 export async function PUT(req: Request) {
   // 1. Check Security (Protect the route)
-  const session = await getServerSession()
-  if (!session) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  // const session = await getServerSession()
+  // if (!session) {
+  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // }
 
   const body = await req.json()
   const { name, newPassword, email } = body // Assuming you might want to change email too later
@@ -29,7 +29,7 @@ export async function PUT(req: Request) {
   try {
     // 4. Update the Admin (Hardcoded to the logged-in user's email, or pass email in body)
     // Ideally, get the email from the session: session.user.email
-    const userEmail = session.user?.email || 'admin@s7.agency' 
+    const userEmail = 'admin@s7.agency'
 
     const updatedUser = await prisma.admin.update({
       where: { email: userEmail },

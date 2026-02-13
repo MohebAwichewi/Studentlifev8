@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 // 👇 FIX: Import the shared connection. 
 // Do NOT use 'import { PrismaClient } from ...' or 'new PrismaClient()'
-import { prisma } from '@/lib/prisma' 
+import { prisma } from '@/lib/prisma'
 
 export async function POST(req: Request) {
   try {
@@ -25,16 +25,17 @@ export async function POST(req: Request) {
     }
 
     // 3. Success
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
       businessId: business.id,
-      businessName: business.businessName 
+      businessName: business.businessName,
+      status: business.status // ✅ Return status so frontend can redirect
     })
 
   } catch (error) {
     console.error("Business Login Error:", error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: "Server error",
       details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
     }, { status: 500 })

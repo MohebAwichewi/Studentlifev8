@@ -1,7 +1,5 @@
 import { NextResponse } from 'next/server'
-import { PrismaClient } from '@prisma/client'
-
-const prisma = new PrismaClient()
+import { prisma } from '@/lib/prisma'
 
 // ✅ FIX: Type 'params' as a Promise
 export async function GET(
@@ -16,10 +14,12 @@ export async function GET(
     const business = await prisma.business.findUnique({
       where: { id: businessId },
       include: {
-        locations: true, // ✅ Gets Real Addresses & Lat/Lng for Map
+        locations: true, // ✅ Gets Real Addresses & Lat/Lng
         deals: {
-          where: { status: 'ACTIVE' }, // ✅ Only lists ACTIVE offers
-          orderBy: { priorityScore: 'desc' }
+          where: { isActive: true }, // Only show active deals
+          select: {
+            id: true, title: true, discount: true, image: true, category: true, expiry: true
+          }
         }
       }
     })
@@ -30,6 +30,8 @@ export async function GET(
 
     // 2. Remove sensitive data before sending to frontend
     const { password, stripeCustomerId, stripeSubscriptionId, ...publicProfile } = business
+
+    return NextResponse.json({ success: true, business: publicProfile })
 
     return NextResponse.json({ success: true, business: publicProfile })
 

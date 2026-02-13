@@ -6,12 +6,12 @@ const prisma = new PrismaClient()
 export async function GET() {
   try {
     // 1. Count Total Verified Students
-    const totalStudents = await prisma.student.count({
+    const totalUsers = await prisma.user.count({
       where: { isVerified: true }
     })
 
     // 2. Group by University (Top 4)
-    const uniStats = await prisma.student.groupBy({
+    const uniStats = await prisma.user.groupBy({
       by: ['university'],
       _count: { university: true },
       orderBy: { _count: { university: 'desc' } },
@@ -21,11 +21,11 @@ export async function GET() {
     // Format for Frontend
     const universities = uniStats.map(stat => ({
       name: stat.university,
-      percent: totalStudents > 0 ? Math.round((stat._count.university / totalStudents) * 100) : 0
+      percent: totalUsers > 0 ? Math.round((stat._count.university / totalUsers) * 100) : 0
     }))
 
     return NextResponse.json({ 
-      totalNearby: totalStudents, 
+      totalNearby: totalUsers, 
       universities 
     })
   } catch (error) {

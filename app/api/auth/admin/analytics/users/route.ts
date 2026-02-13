@@ -6,19 +6,19 @@ const prisma = new PrismaClient()
 export async function GET() {
   try {
     // 1. Basic Counts
-    const totalStudents = await prisma.student.count()
-    const verifiedStudents = await prisma.student.count({ where: { isVerified: true } })
+    const totalUsers = await prisma.user.count()
+    const verifiedUsers = await prisma.user.count({ where: { isVerified: true } })
     
     // 2. Students joined today (Real Growth Metric)
     const startOfDay = new Date()
     startOfDay.setHours(0,0,0,0)
-    const newToday = await prisma.student.count({
+    const newToday = await prisma.user.count({
       where: { createdAt: { gte: startOfDay } }
     })
 
     // 3. Distribution by University (Top 5)
     // This aggregates real data from the 'university' column
-    const uniStats = await prisma.student.groupBy({
+    const uniStats = await prisma.user.groupBy({
       by: ['university'],
       _count: {
         university: true,
@@ -32,7 +32,7 @@ export async function GET() {
     })
 
     // 4. Recent Student Signups
-    const recentStudents = await prisma.student.findMany({
+    const recentUsers = await prisma.user.findMany({
       take: 10,
       orderBy: { createdAt: 'desc' },
       select: {
@@ -46,11 +46,11 @@ export async function GET() {
     })
 
     return NextResponse.json({
-      total: totalStudents,
-      verified: verifiedStudents,
+      total: totalUsers,
+      verified: verifiedUsers,
       newToday,
       uniDistribution: uniStats,
-      recent: recentStudents
+      recent: recentUsers
     })
 
   } catch (error) {

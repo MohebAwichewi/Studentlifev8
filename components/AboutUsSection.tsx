@@ -42,7 +42,7 @@ export default function AboutUsSection() {
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
         
-        {/* --- 1. Header: What is Student.LIFE? --- */}
+        {/* --- 1. Header: What is WIN? --- */}
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -57,7 +57,7 @@ export default function AboutUsSection() {
             Redefining the <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-red-500">University Experience.</span>
           </h2>
           <p className="text-lg text-slate-600 leading-relaxed font-medium">
-            Student.LIFE isn't just an app; it's your campus operating system. We exist to bridge the gap between academic life, local culture, and your budget, ensuring your university years are memorable for the right reasons.
+            WIN isn't just an app; it's your campus operating system. We exist to bridge the gap between academic life, local culture, and your budget, ensuring your university years are memorable for the right reasons.
           </p>
         </motion.div>
 
@@ -78,7 +78,7 @@ export default function AboutUsSection() {
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-3">Stretch Your Budget</h3>
               <p className="text-slate-500 leading-relaxed">
-                Being a student is expensive. Why pay full price? We curate exclusive deals from the brands you actually love, freeing up cash for more experiences.
+                Being a user is expensive. Why pay full price? We curate exclusive deals from the brands you actually love, freeing up cash for more experiences.
               </p>
             </div>
           </motion.div>
@@ -92,7 +92,7 @@ export default function AboutUsSection() {
               </div>
               <h3 className="text-xl font-bold text-white mb-3">Your Digital Identity</h3>
               <p className="text-slate-300 leading-relaxed">
-                Ditch the plastic card. Your Student.LIFE profile is your verified digital ID, granting instant access to campus facilities, events, and in-store discounts with a tap.
+                Ditch the plastic card. Your WIN profile is your verified digital ID, granting instant access to campus facilities, events, and in-store discounts with a tap.
               </p>
             </div>
           </motion.div>
@@ -120,7 +120,7 @@ export default function AboutUsSection() {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <h2 className="text-3xl font-bold text-slate-900">Built by Students, for Students.</h2>
+            <h2 className="text-3xl font-bold text-slate-900">Built for Users.</h2>
             <p className="text-slate-500 mt-4">Meet the leadership team driving the vision forward.</p>
           </motion.div>
           
@@ -146,7 +146,7 @@ export default function AboutUsSection() {
               </div>
               <h3 className="text-2xl font-black text-slate-900 mb-1">Adi</h3>
               <p className="text-indigo-600 font-bold text-xs uppercase tracking-widest">Chief Executive Officer (CEO)</p>
-               <p className="text-slate-400 text-sm mt-3 max-w-xs mx-auto">The visionary ensuring Student.LIFE delivers real value to every campus.</p>
+               <p className="text-slate-400 text-sm mt-3 max-w-xs mx-auto">The visionary ensuring WIN delivers real value to every campus.</p>
             </motion.div>
 
              {/* Divider for mobile */}
@@ -172,7 +172,7 @@ export default function AboutUsSection() {
               </div>
               <h3 className="text-2xl font-black text-slate-900 mb-1">Moheb</h3>
               <p className="text-red-500 font-bold text-xs uppercase tracking-widest">Chief Technology Officer (CTO)</p>
-              <p className="text-slate-400 text-sm mt-3 max-w-xs mx-auto">The architect behind the secure, scalable platform powering your student ID.</p>
+              <p className="text-slate-400 text-sm mt-3 max-w-xs mx-auto">The architect behind the secure, scalable platform powering your user ID.</p>
             </motion.div>
 
           </div>
@@ -181,3 +181,4 @@ export default function AboutUsSection() {
     </section>
   );
 };
+
