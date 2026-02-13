@@ -11,14 +11,14 @@ export async function POST(req: Request) {
     // 2. Validation: Check if critical fields are empty
     // (We allow region to be optional, but you can add !region here if strictly required)
     if (!name || !lat || !lng) {
-        return NextResponse.json({ error: "Missing required fields (Name, Lat, or Lng)" }, { status: 400 })
+      return NextResponse.json({ error: "Missing required fields (Name, Lat, or Lng)" }, { status: 400 })
     }
 
     // 3. Create in Database
     const university = await prisma.university.create({
       data: {
         name,
-        region: region || "Tunis", // Fallback to 'Tunis' if region is empty
+        region: region, // Strict: No default
         // Convert string inputs to floats for the database
         latitude: parseFloat(lat),
         longitude: parseFloat(lng)

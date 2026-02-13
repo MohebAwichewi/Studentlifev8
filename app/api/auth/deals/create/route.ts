@@ -37,6 +37,7 @@ export async function POST(req: Request) {
             if (!isNaN(d.getTime())) validExpiry = d;
         }
 
+<<<<<<< HEAD
         let validStartDate = null;
         if (startDate) {
             const startDateTime = startTime ? `${startDate}T${startTime}` : `${startDate}T00:00:00`;
@@ -50,12 +51,17 @@ export async function POST(req: Request) {
             : `${discount}%`;
 
         // 4. Create Deal
+=======
+        // 3. Create Deal
+        // Deals start as PENDING and require admin approval
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         const deal = await prisma.deal.create({
             data: {
                 title,
                 description: description || "",
                 discount: discountType === 'FIXED' ? `${discount} TND` : `${discount}%`,
                 category: category || "General",
+<<<<<<< HEAD
                 subCategory: subCategory || null,
                 expiry: validExpiry,
                 image: image || "", // Backward compat
@@ -75,6 +81,18 @@ export async function POST(req: Request) {
                 // Wait, user asked for "Happy Hour". I should probably add them to schema or just store in a JSON field if I had one. 
                 // For now, I will NOT add them to schema to avoid too many migrations, and just let them be client-side logic or implied.
                 // Actually, let's just save the deal.
+=======
+                status: 'PENDING', // ✅ Requires admin approval
+                stock: -1, // ✅ Default to Unlimited (User Requested)
+                views: 0,
+                claimed: 0,
+                isMultiUse: isMultiUse || false,
+                isUrgent: false, // Default to false for now, or add to body destructuring if needed
+                redemptionType: redemptionType || 'SWIPE',
+                business: {
+                    connect: { id: businessId }
+                }
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
             }
         })
 

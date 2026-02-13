@@ -24,20 +24,32 @@ export async function POST(req: Request) {
     // 2. Hash Password
     const hashedPassword = await bcrypt.hash(password, 10)
 
+<<<<<<< HEAD
     // 3. Create Business in Database (Stripe Removed)
+=======
+    // 3. Save to Database (No Stripe, just DB)
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     const business = await prisma.business.create({
       data: {
         businessName,
         email,
         password: hashedPassword,
-        address: address || "Tunis",
+        address: address, // Strict: No default
         phone: phone || "",
-        city: city || "Tunis",
+        city: city, // Strict: No default
         category: category || "General",
+<<<<<<< HEAD
         stripeCustomerId: `legacy_${Date.now()}`, // Dummy value as Stripe is removed
         stripeSubscriptionId: null,
         isTrialActive: true,
         // ✅ 90 Days Free Trial
+=======
+        // Stripe fields are nullable in schema, pass null or omit if optional
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+        isTrialActive: true,
+        // ✅ CRITICAL: Ensure this matches your Prisma Schema exactly
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         trialEndsAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
         plan: 'MONTHLY',
         isSubscribed: false,

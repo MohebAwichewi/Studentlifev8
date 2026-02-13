@@ -40,16 +40,31 @@ export async function POST(req: Request) {
     }
 
     // 3. Create the Deal (If passed checks)
+    const categoryIds = (await req.json()).categoryIds || []
+
+    // Fallback: If no categoryIds, try to find ID for the "category" string
+    // But for now, let's assume frontend sends categoryIds or we use "General" as string fallback
+
     const newDeal = await prisma.deal.create({
       data: {
         title,
         description,
         discount: discount,
         businessId: business.id,
-        image: image || null, // Use real image URL from frontend or null
+        image: image || null,
+        // Legacy String Field (Required) - Use first category name or "General"
         category: category || "General",
+<<<<<<< HEAD
         expiry: expiry || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(), // Default 1 year if empty
         isActive: true, // ✅ Immediate Visibility
+=======
+        // New Relation
+        categories: {
+          connect: categoryIds.map((id: any) => ({ id: Number(id) }))
+        },
+        expiry: expiry || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+        status: 'ACTIVE',
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         isMultiUse: true
       }
     })

@@ -33,8 +33,12 @@ export default function BusinessLogin() {
         localStorage.setItem('isBusinessLoggedIn', 'true')
         localStorage.setItem('businessId', data.businessId)
         localStorage.setItem('businessName', data.businessName)
+<<<<<<< HEAD
         localStorage.setItem('businessEmail', formData.email)
         localStorage.setItem('businessStatus', data.status) // Save status
+=======
+        localStorage.setItem('businessEmail', formData.email) // ✅ Save Email
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
         if (data.status === 'PENDING') {
           router.push('/business/pending')

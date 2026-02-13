@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions, ActivityIndicator, TouchableOpacity, Image } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE, Region, Circle } from 'react-native-maps';
@@ -278,6 +279,15 @@ export default function MapScreen() {
                     onClose={() => setSelectedDeal(null)}
                 />
             )}
+=======
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+
+export default function MapScreen() {
+    return (
+        <View style={styles.container}>
+            <Text style={styles.text}>Map view is available on mobile devices.</Text>
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         </View>
     );
 }
@@ -285,9 +295,19 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+<<<<<<< HEAD
     },
     map: {
         width: Dimensions.get('window').width,
         height: '100%',
+=======
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#fff',
+    },
+    text: {
+        fontSize: 18,
+        color: '#64748b',
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     },
 });

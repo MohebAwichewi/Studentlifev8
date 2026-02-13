@@ -30,3 +30,62 @@ export const sendOTP = async (to: string, code: string) => {
     return false;
   }
 };
+<<<<<<< HEAD
+=======
+
+export const sendVerificationSuccess = async (to: string, name: string) => {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'Student Life <support@student-life.uk>',
+      to: [to],
+      subject: 'Your Student ID is Verified! 🎉',
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; text-align: center; color: #333;">
+          <h2 style="color: #000;">Student.LIFE</h2>
+          <h3>Congrats, ${name}!</h3>
+          <p>Your student ID has been verified successfully.</p>
+          <p>You now have full access to exclusive student deals and discounts.</p>
+          <div style="margin: 30px 0;">
+            <a href="https://student-life.uk" style="background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Browse Deals</a>
+          </div>
+        </div>
+      `,
+    });
+    return !error;
+  } catch (error) {
+    console.error("Email Error:", error);
+    return false;
+  }
+};
+
+export const sendVerificationRejection = async (to: string, name: string, reason: string) => {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'Student Life <support@student-life.uk>',
+      to: [to],
+      subject: 'Action Required: ID Verification Failed ⚠️',
+      html: `
+        <div style="font-family: sans-serif; padding: 20px; text-align: center; color: #333;">
+          <h2 style="color: #000;">Student.LIFE</h2>
+          <h3>Hi ${name},</h3>
+          <p>Unfortunately, your student ID verification was rejected.</p>
+          
+          <div style="background: #fee2e2; border: 1px solid #ef4444; color: #b91c1c; padding: 15px; border-radius: 8px; margin: 20px 0; text-align: left;">
+            <strong>Reason:</strong> ${reason}
+          </div>
+
+          <p>Please clear up any issues and upload your ID again to unlock student deals.</p>
+          
+          <div style="margin: 30px 0;">
+            <a href="https://student-life.uk" style="background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold;">Try Again</a>
+          </div>
+        </div>
+      `,
+    });
+    return !error;
+  } catch (error) {
+    console.error("Email Error:", error);
+    return false;
+  }
+};
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af

@@ -14,7 +14,17 @@ const nextConfig = {
     ],
   },
 
+  // ✅ Temporarily disabled to test build
+  // webpack: (config, { isServer }) => {
+  //   config.watchOptions = {
+  //     ...config.watchOptions,
+  //     ignored: ['**/mobile/**', '**/node_modules/**'],
+  //   };
+  //   return config;
+  // },
 
+  // ✅ Empty turbopack config to silence Next.js 16 warning
+  turbopack: {},
 
   typescript: {
     ignoreBuildErrors: true,

@@ -21,7 +21,11 @@ export async function GET() {
 export async function PUT(req: Request) {
   try {
     const body = await req.json()
+<<<<<<< HEAD
     const { id, title, description, category, discountValue, priorityScore, status, expiry, redemptionType, isMultiUse, isUrgent, image } = body
+=======
+    const { id, title, description, category, discountValue, priorityScore, status, expiry, redemptionType, redemptionLink, isMultiUse, isUrgent, image } = body
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
     if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 })
 
@@ -38,6 +42,10 @@ export async function PUT(req: Request) {
         redemptionType,
         isMultiUse: Boolean(isMultiUse),
         isUrgent: Boolean(isUrgent),
+<<<<<<< HEAD
+=======
+        redemptionLink, // ✅ NEW
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         image
       }
     })

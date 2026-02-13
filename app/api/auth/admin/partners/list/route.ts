@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { Prisma } from '@prisma/client'
@@ -84,6 +85,32 @@ export async function GET(req: Request) {
 
     } catch (error) {
         console.error("Partner List Error:", error)
+=======
+
+import { NextResponse } from 'next/server'
+import { PrismaClient } from '@prisma/client'
+
+const prisma = new PrismaClient()
+
+export async function GET() {
+    try {
+        const partners = await prisma.business.findMany({
+            where: {}, // Fetch ALL partners (Pending, Active, Rejected)
+            select: {
+                id: true,
+                businessName: true,
+                email: true,
+                status: true,
+                logo: true,
+                plan: true,
+                createdAt: true
+            },
+            orderBy: { createdAt: 'desc' }
+        })
+
+        return NextResponse.json(partners)
+    } catch (error) {
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         return NextResponse.json({ error: "Failed to fetch partners" }, { status: 500 })
     }
 }

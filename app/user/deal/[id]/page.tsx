@@ -39,7 +39,11 @@ export default function DealDetailsPage() {
                     // ✅ Increment View
                     fetch(`/api/auth/deals/${data.deal.id}/view`, { method: 'POST' })
                 }
+<<<<<<< HEAD:app/user/deal/[id]/page.tsx
                 else router.push('/user/dashboard')
+=======
+                else router.push('/student/home')
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af:app/student/deal/[id]/page.tsx
             } catch (e) { console.error("Failed to load deal") }
             finally { setLoading(false) }
         }
@@ -260,6 +264,7 @@ export default function DealDetailsPage() {
                                         {distance !== null ? `${distance}m away` : 'Locating...'}
                                     </div>
 
+<<<<<<< HEAD:app/user/deal/[id]/page.tsx
                                     {/* CLIAM BUTTON */}
                                     <button
                                         onClick={handleRedeemSuccess}
@@ -269,6 +274,18 @@ export default function DealDetailsPage() {
                                         <i className="fa-solid fa-ticket-alt"></i>
                                         {isWithinRange ? "Claim Deal" : locationError || "Move Closer"}
                                     </button>
+=======
+                                    {/* THE SWIPE BUTTON */}
+                                    <SwipeToRedeem
+                                        onComplete={handleRedeemSuccess}
+                                        onStart={() => {
+                                            // ✅ Track Click (Intent to Redeem)
+                                            if (deal) fetch(`/api/auth/deals/${deal.id}/click`, { method: 'POST' })
+                                        }}
+                                        disabled={!isWithinRange}
+                                        disabledText={locationError || "Move Closer (100m)"}
+                                    />
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af:app/student/deal/[id]/page.tsx
 
                                     <p className="text-[10px] text-slate-400 mt-4 leading-tight">
                                         * Click to generate your transaction ticket. Pay at the counter.

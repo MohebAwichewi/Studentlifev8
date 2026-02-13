@@ -1,5 +1,6 @@
 {
   "expo": {
+<<<<<<< HEAD
     "name": "WIN",
     "slug": "win",
     "version": "1.0.0",
@@ -10,10 +11,23 @@
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
+=======
+    "name": "Student.LIFE",
+    "slug": "mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/logo.png",
+    "scheme": "mobile",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/logo.png",
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
+<<<<<<< HEAD
       "supportsTablet": true
     },
     "android": {
@@ -24,11 +38,43 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
+=======
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyAcZPJco7e_qxO0PCs_q9ADF9pPM7Twr9U"
+      },
+      "bundleIdentifier": "com.studentlife.mobile",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.studentlife.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyAcZPJco7e_qxO0PCs_q9ADF9pPM7Twr9U"
+        }
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false,
+      "blockedPermissions": [
+        "android.permission.ACTIVITY_RECOGNITION",
+        "com.google.android.gms.permission.ACTIVITY_RECOGNITION"
+      ]
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     },
     "web": {
       "bundler": "metro",
       "output": "static",
+<<<<<<< HEAD
       "favicon": "./assets/images/favicon.png"
+=======
+      "favicon": "./assets/logo.png"
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     },
     "plugins": [
       "expo-router"

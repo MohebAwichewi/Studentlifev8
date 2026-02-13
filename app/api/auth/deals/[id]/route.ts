@@ -10,7 +10,12 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
         }
 
         const deal = await prisma.deal.findUnique({
+<<<<<<< HEAD
             where: { id }
+=======
+            where: { id },
+            include: { categories: true }
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         })
 
         if (!deal) {
@@ -52,6 +57,7 @@ export async function PUT(req: Request, props: { params: Promise<{ id: string }>
             data: {
                 title,
                 description,
+<<<<<<< HEAD
                 discount: discount, // Maps correctly if frontend sends formatted string, or handle formatting here if needed. 
                 // Frontend sends "20" or "20.00". We should format it if we want consistency, but sticking to simple update for now or trust frontend sent formatted string?
                 // Wait, DealForm sends raw numbers/strings in `discount`. `add-deal` logic formatted it.
@@ -83,6 +89,27 @@ export async function PUT(req: Request, props: { params: Promise<{ id: string }>
                 // priorityScore...
                 status,
                 rejectionReason,
+=======
+                discountValue: discount,
+                expiry: validExpiry,
+                image,
+                category,
+                isMultiUse,
+                // ✅ UPDATED FIELDS
+                isUrgent: Boolean(isUrgent),
+                priorityScore: priorityScore !== undefined ? parseInt(priorityScore) : undefined,
+                status,
+                rejectionReason,
+                subCategory,
+                subCategory,
+                redemptionType,
+                // ✅ Update Categories
+                ...(body.categoryIds && {
+                    categories: {
+                        set: body.categoryIds.map((id: any) => ({ id: Number(id) }))
+                    }
+                })
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
             }
         })
 

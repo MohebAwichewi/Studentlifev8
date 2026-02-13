@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 // GET: Fetch Business Profile
 export async function GET(req: Request) {
   try {
+<<<<<<< HEAD
     const { searchParams } = new URL(req.url);
     const businessId = searchParams.get('businessId');
 
@@ -23,6 +24,29 @@ export async function GET(req: Request) {
     const { password, ...safeData } = business;
     return NextResponse.json({ success: true, business: safeData });
 
+=======
+    // ✅ FIX: Use businessId instead of email (easier for frontend)
+    const { businessId } = await req.json()
+
+    const business = await prisma.business.findUnique({
+      where: { id: businessId }, // Lookup by ID
+      select: {
+        id: true,
+        businessName: true,
+        email: true,
+        phone: true,
+        category: true,
+        description: true,
+        logo: true,
+        coverImage: true,
+        website: true,
+        address: true,
+        googleMapsUrl: true,
+        googleMapEmbed: true // ✅ Added
+      }
+    })
+    return NextResponse.json(business)
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   } catch (error) {
     console.error("Profile Fetch Error:", error);
     return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
@@ -32,8 +56,14 @@ export async function GET(req: Request) {
 // PUT: Update Business Profile
 export async function PUT(req: Request) {
   try {
+<<<<<<< HEAD
     const body = await req.json();
     const { businessId, ...updates } = body;
+=======
+    const body = await req.json()
+    // ✅ FIX: Use businessId to identify who to update
+    const { businessId, ...updates } = body
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
     if (!businessId) {
       return NextResponse.json({ success: false, error: "Business ID required" }, { status: 400 });
@@ -68,12 +98,28 @@ export async function PUT(req: Request) {
 
     const updatedBusiness = await prisma.business.update({
       where: { id: businessId },
+<<<<<<< HEAD
       data: allowedUpdates
     });
 
     const { password, ...safeData } = updatedBusiness;
     return NextResponse.json({ success: true, business: safeData, message: "Profile updated successfully" });
 
+=======
+      data: {
+        businessName: updates.businessName,
+        phone: updates.phone,
+        description: updates.description,
+        logo: updates.logo,
+        coverImage: updates.banner || updates.coverImage, // ✅ Map banner to coverImage
+        website: updates.website,
+        address: updates.address,
+        googleMapsUrl: updates.googleMapsUrl,
+        googleMapEmbed: updates.googleMapEmbed // ✅ Added
+      }
+    })
+    return NextResponse.json({ success: true, business: updated })
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
   } catch (error) {
     console.error("Profile Update Error:", error);
     return NextResponse.json({ success: false, error: "Failed to update profile" }, { status: 500 });

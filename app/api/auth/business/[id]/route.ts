@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 // 1. GET SINGLE DEAL (For checking details before edit)
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string }> } 
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
@@ -14,8 +14,11 @@ export async function GET(
 
     if (isNaN(dealId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 })
 
-    const deal = await prisma.deal.findUnique({ where: { id: dealId } })
-    
+    const deal = await prisma.deal.findUnique({
+      where: { id: dealId },
+      include: { categories: true }
+    })
+
     if (!deal) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
     return NextResponse.json({ success: true, deal })
@@ -27,12 +30,12 @@ export async function GET(
 // 2. UPDATE DEAL (PUT) - For the "Edit" feature
 export async function PUT(
   req: Request,
-  { params }: { params: Promise<{ id: string }> } 
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
     const body = await req.json()
-    
+
     // Update the deal in the database
     const updatedDeal = await prisma.deal.update({
       where: { id: parseInt(id) },
@@ -41,7 +44,15 @@ export async function PUT(
         description: body.description,
         discountValue: body.discountValue,
         expiry: body.expiry,
-        status: body.status || "ACTIVE"
+        status: body.status || "ACTIVE",
+        // Update Categories
+        ...(body.categoryIds && {
+          categories: {
+            set: body.categoryIds.map((id: any) => ({ id: Number(id) }))
+          }
+        }),
+        // Optional: Update legacy category string if provided
+        ...(body.category && { category: body.category })
       }
     })
 
@@ -54,11 +65,11 @@ export async function PUT(
 // 3. DELETE DEAL (DELETE) - For the "Trash" icon
 export async function DELETE(
   req: Request,
-  { params }: { params: Promise<{ id: string }> } 
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    
+
     await prisma.deal.delete({
       where: { id: parseInt(id) }
     })

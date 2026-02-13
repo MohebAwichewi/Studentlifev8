@@ -6,7 +6,11 @@ interface ImageUploadProps {
   maxFiles?: number
 }
 
+<<<<<<< HEAD
 const ImageUpload: React.FC<ImageUploadProps> = ({ onUpload, value, maxFiles = 1 }) => {
+=======
+const ImageUpload: React.FC<ImageUploadProps> = ({ onUpload, value }) => {
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
 
   const onUploadSuccess = (result: any) => {
     // Cloudinary returns the image URL here
@@ -34,10 +38,17 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ onUpload, value, maxFiles = 1
   return (
     <div>
       <CldUploadWidget
+<<<<<<< HEAD
         uploadPreset="student_life_preset"
         onSuccess={onUploadSuccess}
         options={{
           maxFiles: maxFiles,
+=======
+        uploadPreset="student_life_preset" // 👈 We will create this in the next step
+        onSuccess={onUploadSuccess}
+        options={{
+          maxFiles: 1,
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
           resourceType: "image",
           cropping: true,
           croppingAspectRatio: 1.33,

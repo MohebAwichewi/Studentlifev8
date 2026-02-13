@@ -21,8 +21,14 @@ export async function PUT(req: Request) {
         googleMapsUrl: updateData.googleMapsUrl,
         googleMapEmbed: updateData.googleMapEmbed,
         category: updateData.category,
+<<<<<<< HEAD
         logo: updateData.logo,
         coverImage: updateData.coverImage,
+=======
+        // Only update images if a new value is provided (prevents overwriting with null)
+        ...(updateData.logo && { logo: updateData.logo }),
+        ...(updateData.coverImage && { coverImage: updateData.coverImage }),
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
         // Status/Plan can also be updated here if sent
         ...(updateData.status && { status: updateData.status }),
         ...(updateData.plan && { plan: updateData.plan }),

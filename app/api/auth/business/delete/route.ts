@@ -21,7 +21,15 @@ export async function POST(req: Request) {
     }
 
     // 2. Delete Business from Database
+<<<<<<< HEAD
     // Note: Deleting related records first
+=======
+    // Note: Due to foreign key constraints (Deals, Locations, etc.), 
+    // you might want to use a transaction or cascade delete in schema.
+    // For now, we'll try a direct delete.
+
+    // First delete related records manually if Cascade isn't set up:
+>>>>>>> 593adec7bd95406e859f20f7aa9a8b1f3d69d5af
     await prisma.deal.deleteMany({ where: { businessId } })
     await prisma.location.deleteMany({ where: { businessId } })
     await prisma.pushRequest.deleteMany({ where: { businessId } })
